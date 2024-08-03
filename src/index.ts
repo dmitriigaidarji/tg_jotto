@@ -226,3 +226,10 @@ bot.on("message:text", (ctx) => {
 
 // Start the bot (using long polling)
 bot.start();
+
+Bun.serve({
+  fetch(req) {
+    return new Response("Bun!");
+  },
+  port: process.env.PORT || 3001,
+});
