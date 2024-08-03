@@ -6,17 +6,27 @@ import {
   session,
 } from "grammy";
 import type { SessionFlavor } from "grammy";
+import {
+  type Conversation,
+  type ConversationFlavor,
+  conversations,
+  createConversation,
+} from "@grammyjs/conversations";
+const allWords: {
+  [key: string]: string;
+} = {};
 
 interface IGameUser {
   username: string;
-  word: string;
+  wordToGuess: string;
 }
 interface SessionData {
   mode: "idle" | "progress";
   users: IGameUser[];
 }
 
-type MyContext = Context & SessionFlavor<SessionData>;
+type MyContext = Context & SessionFlavor<SessionData> & ConversationFlavor;
+type MyConversation = Conversation<MyContext>;
 
 // Create a bot object
 const bot = new Bot<MyContext>(process.env.API_KEY!); // <-- place your bot token in this string
@@ -33,13 +43,44 @@ bot.use(
     //   ctx.update.chosen_inline_result?.result_id.toString(),
   }),
 );
+// Install the conversations plugin.
+bot.use(conversations());
 
 await bot.api.setMyCommands([
   { command: "start", description: "Start the bot" },
-  { command: "help", description: "Show help text" },
-  { command: "settings", description: "Open settings" },
+  // { command: "help", description: "Show help text" },
+  // { command: "settings", description: "Open settings" },
   { command: "word", description: "Set the word for your game session" },
+  // { command: "guess", description: "Make a guess for the opponent's word" },
 ]);
+
+/** Defines the conversation */
+async function setWordConvo(conversation: MyConversation, ctx: MyContext) {
+  await ctx.reply("Hi there! What is your word?");
+  const { message } = await conversation.wait();
+  const word = message?.text?.toLowerCase();
+  if (word) {
+    if (!word) {
+      return ctx.reply("Word cannot be empty");
+    }
+    if (word.length !== 5) {
+      return ctx.reply("Word needs to be 5 letters long");
+    }
+    if (new Set(word.split("")).size !== 5) {
+      return ctx.reply("All letters should be unique");
+    }
+    const username = ctx.update.message?.from.username;
+    if (!username) {
+      return ctx.reply("Username not found");
+    }
+    allWords[username!] = word;
+
+    return ctx.reply(
+      `Your word now is: ${word}. Go to the group chat and play!`,
+    );
+  }
+}
+bot.use(createConversation(setWordConvo));
 
 // Listen for any inline query.
 bot.on("inline_query", async (ctx) => {
@@ -47,7 +88,6 @@ bot.on("inline_query", async (ctx) => {
   if (!query) {
     return;
   }
-  console.log("query:", query);
   const keyboard = new InlineKeyboard().text(
     "Activate this word",
     "set-word:" + query,
@@ -64,65 +104,29 @@ bot.on("inline_query", async (ctx) => {
     [result], // answer with result list
   );
 });
-// bot.on("chosen_inline_result", (ctx) => {
-//   const username = ctx.chosenInlineResult.from.username;
-//   const word = ctx.chosenInlineResult.query; // used inline query
-//   if (ctx.session) {
-//     const user = ctx.session.users.find((t) => t.username === username);
-//     if (user) {
-//       user.word = word;
-//     } else {
-//       ctx.session.users.push({
-//         username: username!,
-//         word,
-//       });
-//     }
-//   }
-// });
+
 bot.command("word", (ctx) => {
-  const word = ctx.match;
-  if (!word) {
-    ctx.reply("Word cannot be empty");
-  }
-  const username = ctx.update.message?.from.username;
-  if (!username) {
-    ctx.reply("Username not found");
-  }
-  const user = ctx.session.users.find((t) => t.username === username);
-  if (user) {
-    user.word = word;
-  } else {
-    ctx.session.users.push({
-      username: username!,
-      word,
-    });
-  }
-  ctx.reply(`Your word now is: ${word}`);
+  return ctx.conversation.enter("setWordConvo");
 });
 
 bot.command("start", (ctx) => {
   const { chat } = ctx;
   if (chat.type === "group") {
-    console.log("word3", ctx.match);
-    const button = {
-      text: "Open private chat",
-      start_parameter: "login",
-    };
-    const keyboard = new InlineKeyboard();
-    //.text("Open private chat", "login")
-    // ctx.reply("Start the Game", {
-    //   reply_markup: new InlineKeyboard().text("Open private chat", "set-word"),
-    // });
-    // ctx.session.groupId = ctx.chat.id + "";
-    ctx.reply(JSON.stringify(ctx.session));
-    ctx.reply("Start the Game", {
-      reply_markup: new InlineKeyboard().url(
-        "Set word in a private chat",
-        `https://t.me/JottoGameBot?word=${ctx.chat.id}`,
-      ),
-    });
+    ctx.reply(
+      `New Game. Current players: ${ctx.session.users.map((t) => t.username).join(", ")}`,
+      {
+        reply_markup: new InlineKeyboard()
+          .url(
+            "Set word in a private chat",
+            `https://t.me/JottoGameBot?word=${ctx.chat.id}`,
+          )
+          .row()
+          .text("Join the game!", "join")
+          .row()
+          .text("Start the game!", "start-game"),
+      },
+    );
   } else {
-    console.log("word2", ctx.match);
     ctx.reply("Welcome! Add me to a group chat and type /start");
   }
 });
@@ -130,15 +134,95 @@ bot.command("start", (ctx) => {
 // Wait for click events with specific callback data.
 bot.callbackQuery(/set-word/, async (ctx) => {
   const word = ctx.callbackQuery.data.split(":")[1];
+  ctx.reply("test");
   await ctx.answerCallbackQuery({
     text: "Set your word to: " + word,
   });
 });
 
+bot.callbackQuery("start-game", async (ctx) => {
+  const amount = ctx.session.users.length;
+  if (amount > 1) {
+    ctx.session.mode = "progress";
+
+    for (let i = 0; i < amount; i++) {
+      const current = ctx.session.users[i];
+      if (current) {
+        const nextUser = ctx.session.users[i < amount - 1 ? i + 1 : 0];
+        if (nextUser) {
+          current.wordToGuess = allWords[nextUser.username];
+        } else {
+          current.wordToGuess = "world"; // default word
+        }
+      }
+    }
+    ctx.reply("Starting the game! Make your guess using /guess command");
+    await ctx.answerCallbackQuery({
+      text: "Starting the game..",
+    });
+  } else {
+    return ctx.answerCallbackQuery({
+      text: `Not enough players have joined. Current players: ${ctx.session.users.map((t) => t.username).join(", ")}`,
+    });
+  }
+});
+
+bot.callbackQuery("join", async (ctx) => {
+  const { username } = ctx.callbackQuery.from;
+  if (username) {
+    const word = allWords[username];
+    if (word) {
+      const user = ctx.session.users.find((t) => t.username === username);
+      if (!user) {
+        ctx.session.users.push({
+          username: username!,
+          wordToGuess: "",
+        });
+      }
+      ctx.reply(
+        `${username}  joined the game! Current users: ${ctx.session.users.length}`,
+      );
+      ctx.answerCallbackQuery({
+        text: "You joined the game",
+      });
+    } else {
+      ctx.answerCallbackQuery({
+        text: "Set your word first in the private chat with the bot",
+      });
+    }
+  }
+});
+
 // Register listeners to handle messages
-// bot.on("message:text", (ctx) => {
-//   ctx.reply("Echo: " + ctx.message.text);
-// });
+bot.on("message:text", (ctx) => {
+  if (ctx.session.mode === "progress") {
+    const username = ctx.from?.username;
+    const guess = ctx.message.text.toLowerCase();
+    if (guess.length === 5) {
+      if (new Set(guess.split("")).size !== 5) {
+        return ctx.reply("All letters should be unique", {
+          reply_parameters: { message_id: ctx.msg.message_id },
+        });
+      }
+      const user = ctx.session.users.find((t) => t.username === username);
+      if (user) {
+        const word = user.wordToGuess;
+        if (guess === word) {
+          ctx.session.mode = "idle";
+          return ctx.reply(`${username} has guessed the word correctly!`, {
+            reply_parameters: { message_id: ctx.msg.message_id },
+          });
+        } else {
+          const matched = guess.split("").filter((l) => word.includes(l));
+          const score = matched.length;
+          ctx.reply(`Score ${score}. Matched: ${matched.join("")}`, {
+            reply_parameters: { message_id: ctx.msg.message_id },
+          });
+        }
+      }
+    }
+  }
+});
 
 // Start the bot (using long polling)
 bot.start();

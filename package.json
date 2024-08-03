@@ -3,7 +3,8 @@
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "export DEBUG=grammy* bun --hot run src/index.ts"
+    "dev": "export DEBUG=grammy* bun --hot run src/index.ts",
+    "start": "bun run src/index.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -13,6 +14,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@grammyjs/conversations": "^1.2.0",
     "grammy": "^1.28.0"
   }
 }
