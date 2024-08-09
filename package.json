@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "export DEBUG=grammy* bun --hot run src/index.ts",
-    "start": "bun run src/index.ts"
+    "start": "bun run src/index.ts",
+    "deploy": "pm2 deploy production"
   },
   "devDependencies": {
     "@types/bun": "latest",
