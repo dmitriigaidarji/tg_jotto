@@ -1,3 +1,4 @@
+import type { SessionFlavor } from "grammy";
 import {
   Bot,
   Context,
@@ -5,13 +6,13 @@ import {
   InlineQueryResultBuilder,
   session,
 } from "grammy";
-import type { SessionFlavor } from "grammy";
 import {
   type Conversation,
   type ConversationFlavor,
   conversations,
   createConversation,
 } from "@grammyjs/conversations";
+
 const allWords: {
   [key: string]: string;
 } = {};
@@ -23,6 +24,7 @@ interface IGameUser {
 interface SessionData {
   mode: "idle" | "progress";
   users: IGameUser[];
+  num_letters: number;
 }
 
 type MyContext = Context & SessionFlavor<SessionData> & ConversationFlavor;
@@ -32,7 +34,7 @@ type MyConversation = Conversation<MyContext>;
 const bot = new Bot<MyContext>(process.env.API_KEY!); // <-- place your bot token in this string
 // Install session middleware, and define the initial session value.
 function initial(): SessionData {
-  return { mode: "idle", users: [] };
+  return { mode: "idle", users: [], num_letters: 5 };
 }
 
 bot.use(
@@ -48,10 +50,7 @@ bot.use(conversations());
 
 await bot.api.setMyCommands([
   { command: "start", description: "Start the bot" },
-  // { command: "help", description: "Show help text" },
-  // { command: "settings", description: "Open settings" },
   { command: "word", description: "Set the word for your game session" },
-  // { command: "guess", description: "Make a guess for the opponent's word" },
 ]);
 
 /** Defines the conversation */
@@ -63,10 +62,7 @@ async function setWordConvo(conversation: MyConversation, ctx: MyContext) {
     if (!word) {
       return ctx.reply("Word cannot be empty");
     }
-    if (word.length !== 5) {
-      return ctx.reply("Word needs to be 5 letters long");
-    }
-    if (new Set(word.split("")).size !== 5) {
+    if (new Set(word.split("")).size !== word.length) {
       return ctx.reply("All letters should be unique");
     }
     const username = ctx.update.message?.from.username;
@@ -80,6 +76,7 @@ async function setWordConvo(conversation: MyConversation, ctx: MyContext) {
     );
   }
 }
+
 bot.use(createConversation(setWordConvo));
 
 // Listen for any inline query.
@@ -109,17 +106,32 @@ bot.command("word", (ctx) => {
   return ctx.conversation.enter("setWordConvo");
 });
 
+bot.command("letters", (ctx) => {
+  if (ctx.session.mode === "progress") {
+    return ctx.reply(
+      "Cannot change number of letters while the game is in progress.",
+    );
+  }
+  return ctx.conversation.enter("setLetterCountConvo");
+});
+
 bot.command("start", (ctx) => {
   const { chat } = ctx;
   if (chat.type === "group") {
     ctx.reply(
-      `New Game. Current players: ${ctx.session.users.map((t) => t.username).join(", ")}`,
+      `New Game. Number of letters: ${
+        ctx.session.num_letters
+      }. Current players: ${ctx.session.users
+        .map((t) => t.username)
+        .join(", ")}`,
       {
         reply_markup: new InlineKeyboard()
           .url(
             "Set word in a private chat",
             `https://t.me/JottoGameBot?word=${ctx.chat.id}`,
           )
+          .row()
+          .text("Change number of letters!", "change-letters")
           .row()
           .text("Join the game!", "join")
           .row()
@@ -140,6 +152,26 @@ bot.callbackQuery(/set-word/, async (ctx) => {
   });
 });
 
+bot.callbackQuery("change-letters", async (ctx) => {
+  if (ctx.session.mode === "progress") {
+    return ctx.reply(
+      "Cannot change number of letters while the game is in progress.",
+    );
+  }
+  const keyboard = new InlineKeyboard();
+  for (let i = 2; i < 10; i++) {
+    keyboard.text(i + "", `set-letters=${i}`).row();
+  }
+  return ctx.reply("Pick amount of letters", {
+    reply_markup: keyboard,
+  });
+});
+bot.callbackQuery(/set-letters/, async (ctx) => {
+  ctx.session.num_letters = parseInt(ctx.callbackQuery.data.split("=")[1], 10);
+  return ctx.reply(
+    `Number of letters for the game is now: ${ctx.session.num_letters}! Please re-join the game.`,
+  );
+});
 bot.callbackQuery("start-game", async (ctx) => {
   const amount = ctx.session.users.length;
   if (amount > 1) {
@@ -156,7 +188,7 @@ bot.callbackQuery("start-game", async (ctx) => {
         }
       }
     }
-    ctx.reply("Starting the game! Make your guess using /guess command");
+    ctx.reply("Starting the game! Type your guesses");
     await ctx.answerCallbackQuery({
       text: "Starting the game..",
     });
@@ -172,6 +204,17 @@ bot.callbackQuery("join", async (ctx) => {
   if (username) {
     const word = allWords[username];
     if (word) {
+      if (word.length !== ctx.session.num_letters) {
+        ctx.reply(
+          `${username} tried to join the game, but their word had wrong amount of letters: ${word.length}, needed to join: ${ctx.session.num_letters}.`,
+        );
+
+        return ctx.answerCallbackQuery({
+          text:
+            "Number of letters in your word does not match game setting letter count, which is: " +
+            ctx.session.num_letters,
+        });
+      }
       const user = ctx.session.users.find((t) => t.username === username);
       if (!user) {
         ctx.session.users.push({
@@ -186,6 +229,7 @@ bot.callbackQuery("join", async (ctx) => {
         text: "You joined the game",
       });
     } else {
+      ctx.reply(`${username} tried to join the game, but had no word set up.`);
       ctx.answerCallbackQuery({
         text: "Set your word first in the private chat with the bot",
       });
@@ -198,8 +242,8 @@ bot.on("message:text", (ctx) => {
   if (ctx.session.mode === "progress") {
     const username = ctx.from?.username;
     const guess = ctx.message.text.toLowerCase();
-    if (guess.length === 5) {
-      if (new Set(guess.split("")).size !== 5) {
+    if (guess.length === ctx.session.num_letters) {
+      if (new Set(guess.split("")).size !== guess.length) {
         return ctx.reply("All letters should be unique", {
           reply_parameters: { message_id: ctx.msg.message_id },
         });
