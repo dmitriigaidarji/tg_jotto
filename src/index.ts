@@ -41,7 +41,7 @@ function initial(): SessionData {
     mode: "idle",
     users: [],
     num_letters: 5,
-    validateEnglish: true,
+    validateEnglish: false,
     scores: {},
   };
 }
@@ -81,27 +81,31 @@ function getUserIdentifier(
 /** Defines the conversation */
 async function setWordConvo(conversation: MyConversation, ctx: MyContext) {
   await ctx.reply("Hi there! What is your word?");
-  const { message } = await conversation.wait();
-  const word = message?.text?.toLowerCase();
-  if (word) {
-    if (!word) {
-      return ctx.reply("Word cannot be empty");
-    }
-    if (new Set(word.split("")).size !== word.length) {
-      return ctx.reply("All letters should be unique");
-    }
-    const username = getUserIdentifier(ctx.update.message?.from);
-    if (!username) {
-      return ctx.reply("Username not found");
-    }
-    await setPlayerWord({
-      username,
-      word,
-    });
+  let gotWord = false;
+  while (!gotWord) {
+    const { message } = await conversation.wait();
+    const word = message?.text?.toLowerCase();
+    if (word) {
+      if (!word) {
+        ctx.reply("Word cannot be empty");
+      } else if (new Set(word.split("")).size !== word.length) {
+        ctx.reply("All letters should be unique");
+      } else {
+        const username = getUserIdentifier(ctx.update.message?.from);
+        if (!username) {
+          return ctx.reply("Username not found");
+        }
+        await setPlayerWord({
+          username,
+          word,
+        });
+        gotWord = true;
 
-    return ctx.reply(
-      `Your word now is: ${word}. Go to the group chat and play!`,
-    );
+        return ctx.reply(
+          `Your word now is: ${word}. Go to the group chat and play!`,
+        );
+      }
+    }
   }
 }
 
@@ -168,7 +172,7 @@ bot.command("start", (ctx) => {
         reply_markup: new InlineKeyboard()
           .url(
             "Set word in a private chat",
-            `https://t.me/JottoGameBot?word=${ctx.chat.id}`,
+            `https://t.me/JottoGameBot?start=word`,
           )
           .row()
           .text("Toggle English dictionary validation", "toggle-validate")
@@ -181,7 +185,7 @@ bot.command("start", (ctx) => {
       },
     );
   } else {
-    return ctx.reply("Welcome! Add me to a group chat and type /start");
+    return ctx.conversation.enter("setWordConvo");
   }
 });
 
@@ -268,7 +272,7 @@ bot.callbackQuery("join", async (ctx) => {
       }
       if (ctx.session.validateEnglish && !(await validateEnglishWord(word))) {
         return ctx.reply(
-          `${username} tried to join the game, but their word was not a valid English word`,
+          `${username} tried to join the game, but their word was not a valid English word. Press Toggle English dictionary validation button to disable this verification step.`,
         );
       }
       const user = ctx.session.users.find((t) => t.username === username);
@@ -294,16 +298,27 @@ bot.callbackQuery("join", async (ctx) => {
 });
 
 // Register listeners to handle messages
-bot.on("message:text", (ctx) => {
+bot.on("message:text", async (ctx) => {
   if (ctx.session.mode === "progress") {
     const username = getUserIdentifier(ctx.from);
     if (username) {
-      const guess = ctx.message.text.toLowerCase();
+      const guess = ctx.message.text.toLowerCase().trim();
       if (guess.length === ctx.session.num_letters) {
         if (new Set(guess.split("")).size !== guess.length) {
           return ctx.reply("All letters should be unique", {
             reply_parameters: { message_id: ctx.msg.message_id },
           });
+        }
+        if (
+          ctx.session.validateEnglish &&
+          !(await validateEnglishWord(guess))
+        ) {
+          return ctx.reply(
+            `${guess} is not a valid English word. Press Toggle English dictionary validation button to disable this verification step.`,
+            {
+              reply_parameters: { message_id: ctx.msg.message_id },
+            },
+          );
         }
         const user = ctx.session.users.find((t) => t.username === username);
         if (user) {
