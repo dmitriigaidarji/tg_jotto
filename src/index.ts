@@ -12,10 +12,7 @@ import {
   conversations,
   createConversation,
 } from "@grammyjs/conversations";
-
-const allWords: {
-  [key: string]: string;
-} = {};
+import { getPlayerWord, setPlayerWord } from "./redis.ts";
 
 interface IGameUser {
   username: string;
@@ -69,7 +66,10 @@ async function setWordConvo(conversation: MyConversation, ctx: MyContext) {
     if (!username) {
       return ctx.reply("Username not found");
     }
-    allWords[username!] = word;
+    await setPlayerWord({
+      username,
+      word,
+    });
 
     return ctx.reply(
       `Your word now is: ${word}. Go to the group chat and play!`,
@@ -182,7 +182,7 @@ bot.callbackQuery("start-game", async (ctx) => {
       if (current) {
         const nextUser = ctx.session.users[i < amount - 1 ? i + 1 : 0];
         if (nextUser) {
-          current.wordToGuess = allWords[nextUser.username];
+          current.wordToGuess = await getPlayerWord(nextUser.username);
         } else {
           current.wordToGuess = "world"; // default word
         }
@@ -202,7 +202,7 @@ bot.callbackQuery("start-game", async (ctx) => {
 bot.callbackQuery("join", async (ctx) => {
   const { username } = ctx.callbackQuery.from;
   if (username) {
-    const word = allWords[username];
+    const word = await getPlayerWord(username);
     if (word) {
       if (word.length !== ctx.session.num_letters) {
         ctx.reply(
