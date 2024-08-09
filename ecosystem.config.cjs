@@ -15,7 +15,7 @@ module.exports = {
       path: "/root/projects/tg_jotto",
       "pre-deploy-local": "",
       "post-deploy":
-        "npm install && pm2 reload ecosystem.config.cjs --env production",
+        "bun i && pm2 reload ecosystem.config.cjs --env production",
       "pre-setup": "",
     },
   },
