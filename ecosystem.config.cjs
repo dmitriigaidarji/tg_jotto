@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 module.exports = {
   apps: [
     {
@@ -17,6 +19,10 @@ module.exports = {
       "post-deploy":
         "bun i && pm2 reload ecosystem.config.cjs --env production",
       "pre-setup": "",
+      env: {
+        API_KEY: process.env.API_KEY,
+        PORT: process.env.PORT,
+      },
     },
   },
 };
