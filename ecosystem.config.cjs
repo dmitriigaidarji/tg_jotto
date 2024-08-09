@@ -10,7 +10,7 @@ module.exports = {
     production: {
       user: "root",
       host: "188.245.103.173",
-      ref: "origin/master",
+      ref: "origin/main",
       repo: "git@github.com:dmitriigaidarji/tg_jotto.git",
       path: "~/projects/tg_jotto",
       "pre-deploy-local": "",
