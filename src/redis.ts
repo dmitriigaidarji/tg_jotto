@@ -19,8 +19,8 @@ export function setPlayerWord({
     .set(keyForWord(username), word)
     .then(() => redisClient.expire(keyForWord(username), 60 * 60)); // 1h
 }
-export function getPlayerWord(username: string): Promise<string> {
-  return redisClient.get(keyForWord(username)).then((r) => r ?? "word");
+export function getPlayerWord(username: string) {
+  return redisClient.get(keyForWord(username));
 }
 
 export default redisClient;

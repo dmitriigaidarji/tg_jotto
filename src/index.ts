@@ -80,7 +80,14 @@ function getUserIdentifier(
 
 /** Defines the conversation */
 async function setWordConvo(conversation: MyConversation, ctx: MyContext) {
-  await ctx.reply("Hi there! What is your word?");
+  const username = getUserIdentifier(ctx.update.message?.from);
+  if (!username) {
+    return ctx.reply("Username not found");
+  }
+  const currentWord = await getPlayerWord(username);
+  await ctx.reply(
+    `Hi there!${currentWord ? ` Your current word is: ${currentWord}.` : ""} What is your word?`,
+  );
   let gotWord = false;
   while (!gotWord) {
     const { message } = await conversation.wait();
@@ -237,9 +244,18 @@ bot.callbackQuery("start-game", async (ctx) => {
       if (current) {
         const nextUser = ctx.session.users[i < amount - 1 ? i + 1 : 0];
         if (nextUser) {
-          current.wordToGuess = await getPlayerWord(nextUser.username);
+          const wordToGuess = await getPlayerWord(nextUser.username);
+          if (wordToGuess) {
+            current.wordToGuess = wordToGuess;
+          } else {
+            ctx.session.mode = "idle";
+            ctx.session.users.length = 0;
+            return ctx.reply("Failed to start the game. Try again.");
+          }
         } else {
-          current.wordToGuess = "world"; // default word
+          ctx.session.mode = "idle";
+          ctx.session.users.length = 0;
+          return ctx.reply("Failed to start the game. Try again.");
         }
       }
     }
