@@ -12,7 +12,7 @@ module.exports = {
       host: "188.245.103.173",
       ref: "origin/main",
       repo: "https://github.com/dmitriigaidarji/tg_jotto.git",
-      path: "",
+      path: "/root/projects/tg_jotto",
       "pre-deploy-local": "",
       "post-deploy":
         "npm install && pm2 reload ecosystem.config.cjs --env production",
