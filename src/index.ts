@@ -86,7 +86,7 @@ async function setWordConvo(conversation: MyConversation, ctx: MyContext) {
   }
   const currentWord = await getPlayerWord(username);
   await ctx.reply(
-    `Hi there!${currentWord ? ` Your current word is: ${currentWord}.` : ""} What is your word?`,
+    `Hi there!${currentWord ? ` Your current word is: ${currentWord}.` : ""} What is your new word?`,
   );
   let gotWord = false;
   while (!gotWord) {
