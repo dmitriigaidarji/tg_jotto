@@ -17,3 +17,22 @@ export function formatScores(
     })
     .join(", ");
 }
+
+export function getCurrentPlayers({
+  users,
+}: Pick<SessionData, "users">): string {
+  if (users.length === 0) {
+    return "";
+  }
+  return `Current players: ${users.map((t) => t.username).join(", ")}.`;
+}
+
+export function getCurrentScores(
+  props: Pick<SessionData, "scores" | "users">,
+): string {
+  const scoresStr = formatScores(props);
+  if (!scoresStr) {
+    return "";
+  }
+  return `Current scores: ${scoresStr}.`;
+}

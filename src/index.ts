@@ -14,7 +14,7 @@ import {
 } from "@grammyjs/conversations";
 import { getPlayerWord, setPlayerWord } from "./redis.ts";
 import { validateEnglishWord } from "./dict.ts";
-import { formatScores } from "./helpers.ts";
+import { getCurrentPlayers, getCurrentScores } from "./helpers.ts";
 
 interface IGameUser {
   username: string;
@@ -163,9 +163,7 @@ bot.command("start", (ctx) => {
     return ctx.reply(
       `New Game. Number of letters: ${
         ctx.session.num_letters
-      }. Current players: ${ctx.session.users
-        .map((t) => t.username)
-        .join(", ")}. Current scores: ${formatScores(ctx.session)}`,
+      }. ${getCurrentPlayers(ctx.session)} ${getCurrentScores(ctx.session)}`,
       {
         reply_markup: new InlineKeyboard()
           .url(
@@ -247,7 +245,7 @@ bot.callbackQuery("start-game", async (ctx) => {
     });
   } else {
     return ctx.answerCallbackQuery({
-      text: `Not enough players have joined. Current players: ${ctx.session.users.map((t) => t.username).join(", ")}`,
+      text: `Not enough players have joined. ${getCurrentPlayers(ctx.session)}`,
     });
   }
 });
@@ -281,7 +279,7 @@ bot.callbackQuery("join", async (ctx) => {
         });
       }
       ctx.reply(
-        `${username}  joined the game! Current players: ${ctx.session.users.map((t) => t.username).join(",")}`,
+        `${username}  joined the game! ${getCurrentPlayers(ctx.session)}`,
       );
       ctx.answerCallbackQuery({
         text: "You joined the game",
@@ -318,12 +316,12 @@ bot.on("message:text", (ctx) => {
             } else {
               scores[username]++;
             }
-            const scoresResult = formatScores(session);
+            const scoresResult = getCurrentScores(session);
             session.mode = "idle";
             session.users.length = 0;
 
             return ctx.reply(
-              `${username} has guessed the word correctly! Current scores: ${scoresResult}`,
+              `${username} has guessed the word correctly! ${scoresResult}`,
               {
                 reply_parameters: { message_id: ctx.msg.message_id },
               },
