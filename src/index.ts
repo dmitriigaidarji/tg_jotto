@@ -84,7 +84,9 @@ async function setWordConvo(conversation: MyConversation, ctx: MyContext) {
   if (!username) {
     return ctx.reply("Username not found");
   }
-  const currentWord = await getPlayerWord(username);
+  const currentWord = await conversation.external(() =>
+    getPlayerWord(username),
+  );
   await ctx.reply(
     `Hi there!${currentWord ? ` Your current word is: ${currentWord}.` : ""} What is your new word?`,
   );
@@ -98,10 +100,6 @@ async function setWordConvo(conversation: MyConversation, ctx: MyContext) {
       } else if (new Set(word.split("")).size !== word.length) {
         ctx.reply("All letters should be unique");
       } else {
-        const username = getUserIdentifier(ctx.update.message?.from);
-        if (!username) {
-          return ctx.reply("Username not found");
-        }
         await setPlayerWord({
           username,
           word,
