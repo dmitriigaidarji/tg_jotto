@@ -13,15 +13,21 @@ import {
   createConversation,
 } from "@grammyjs/conversations";
 import { getPlayerWord, setPlayerWord } from "./redis.ts";
+import { validateEnglishWord } from "./dict.ts";
+import { formatScores } from "./helpers.ts";
 
 interface IGameUser {
   username: string;
   wordToGuess: string;
 }
-interface SessionData {
+export interface SessionData {
   mode: "idle" | "progress";
   users: IGameUser[];
   num_letters: number;
+  validateEnglish: boolean;
+  scores: {
+    [username: string]: number;
+  };
 }
 
 type MyContext = Context & SessionFlavor<SessionData> & ConversationFlavor;
@@ -31,7 +37,13 @@ type MyConversation = Conversation<MyContext>;
 const bot = new Bot<MyContext>(process.env.API_KEY!); // <-- place your bot token in this string
 // Install session middleware, and define the initial session value.
 function initial(): SessionData {
-  return { mode: "idle", users: [], num_letters: 5 };
+  return {
+    mode: "idle",
+    users: [],
+    num_letters: 5,
+    validateEnglish: true,
+    scores: {},
+  };
 }
 
 bot.use(
@@ -46,9 +58,25 @@ bot.use(
 bot.use(conversations());
 
 await bot.api.setMyCommands([
-  { command: "start", description: "Start the bot" },
+  { command: "start", description: "Start the game" },
+  { command: "stop", description: "Stop the game" },
   { command: "word", description: "Set the word for your game session" },
 ]);
+
+function getUserIdentifier(
+  props:
+    | {
+        username?: string;
+        id: number;
+      }
+    | undefined,
+): string | undefined {
+  if (props) {
+    const { username, id } = props;
+    return username ?? id + "";
+  }
+  return undefined;
+}
 
 /** Defines the conversation */
 async function setWordConvo(conversation: MyConversation, ctx: MyContext) {
@@ -62,7 +90,7 @@ async function setWordConvo(conversation: MyConversation, ctx: MyContext) {
     if (new Set(word.split("")).size !== word.length) {
       return ctx.reply("All letters should be unique");
     }
-    const username = ctx.update.message?.from.username;
+    const username = getUserIdentifier(ctx.update.message?.from);
     if (!username) {
       return ctx.reply("Username not found");
     }
@@ -115,15 +143,29 @@ bot.command("letters", (ctx) => {
   return ctx.conversation.enter("setLetterCountConvo");
 });
 
+bot.command("stop", (ctx) => {
+  ctx.session.mode = "idle";
+  ctx.session.users.length = 0;
+  const { chat } = ctx;
+
+  if (chat.type === "group") {
+    return ctx.reply("The game was cancelled.");
+  } else {
+    return ctx.reply(
+      "Use this command in a group chat to stop an ongoing game.",
+    );
+  }
+});
+
 bot.command("start", (ctx) => {
   const { chat } = ctx;
   if (chat.type === "group") {
-    ctx.reply(
+    return ctx.reply(
       `New Game. Number of letters: ${
         ctx.session.num_letters
       }. Current players: ${ctx.session.users
         .map((t) => t.username)
-        .join(", ")}`,
+        .join(", ")}. Current scores: ${formatScores(ctx.session)}`,
       {
         reply_markup: new InlineKeyboard()
           .url(
@@ -131,15 +173,17 @@ bot.command("start", (ctx) => {
             `https://t.me/JottoGameBot?word=${ctx.chat.id}`,
           )
           .row()
-          .text("Change number of letters!", "change-letters")
+          .text("Toggle English dictionary validation", "toggle-validate")
           .row()
-          .text("Join the game!", "join")
+          .text("Change number of letters", "change-letters")
           .row()
-          .text("Start the game!", "start-game"),
+          .text("Join the game", "join")
+          .row()
+          .text("Start the game", "start-game"),
       },
     );
   } else {
-    ctx.reply("Welcome! Add me to a group chat and type /start");
+    return ctx.reply("Welcome! Add me to a group chat and type /start");
   }
 });
 
@@ -152,6 +196,13 @@ bot.callbackQuery(/set-word/, async (ctx) => {
   });
 });
 
+bot.callbackQuery("toggle-validate", async (ctx) => {
+  ctx.session.validateEnglish = !ctx.session.validateEnglish;
+  return ctx.reply(
+    `English dictionary validation has been ${ctx.session.validateEnglish ? "enabled" : "disabled"}!`,
+  );
+});
+
 bot.callbackQuery("change-letters", async (ctx) => {
   if (ctx.session.mode === "progress") {
     return ctx.reply(
@@ -159,19 +210,21 @@ bot.callbackQuery("change-letters", async (ctx) => {
     );
   }
   const keyboard = new InlineKeyboard();
-  for (let i = 2; i < 10; i++) {
+  for (let i = 4; i < 9; i++) {
     keyboard.text(i + "", `set-letters=${i}`).row();
   }
   return ctx.reply("Pick amount of letters", {
     reply_markup: keyboard,
   });
 });
+
 bot.callbackQuery(/set-letters/, async (ctx) => {
   ctx.session.num_letters = parseInt(ctx.callbackQuery.data.split("=")[1], 10);
   return ctx.reply(
     `Number of letters for the game is now: ${ctx.session.num_letters}! Please re-join the game.`,
   );
 });
+
 bot.callbackQuery("start-game", async (ctx) => {
   const amount = ctx.session.users.length;
   if (amount > 1) {
@@ -215,6 +268,11 @@ bot.callbackQuery("join", async (ctx) => {
             ctx.session.num_letters,
         });
       }
+      if (ctx.session.validateEnglish && !(await validateEnglishWord(word))) {
+        return ctx.reply(
+          `${username} tried to join the game, but their word was not a valid English word`,
+        );
+      }
       const user = ctx.session.users.find((t) => t.username === username);
       if (!user) {
         ctx.session.users.push({
@@ -223,7 +281,7 @@ bot.callbackQuery("join", async (ctx) => {
         });
       }
       ctx.reply(
-        `${username}  joined the game! Current users: ${ctx.session.users.length}`,
+        `${username}  joined the game! Current players: ${ctx.session.users.map((t) => t.username).join(",")}`,
       );
       ctx.answerCallbackQuery({
         text: "You joined the game",
@@ -240,28 +298,43 @@ bot.callbackQuery("join", async (ctx) => {
 // Register listeners to handle messages
 bot.on("message:text", (ctx) => {
   if (ctx.session.mode === "progress") {
-    const username = ctx.from?.username;
-    const guess = ctx.message.text.toLowerCase();
-    if (guess.length === ctx.session.num_letters) {
-      if (new Set(guess.split("")).size !== guess.length) {
-        return ctx.reply("All letters should be unique", {
-          reply_parameters: { message_id: ctx.msg.message_id },
-        });
-      }
-      const user = ctx.session.users.find((t) => t.username === username);
-      if (user) {
-        const word = user.wordToGuess;
-        if (guess === word) {
-          ctx.session.mode = "idle";
-          return ctx.reply(`${username} has guessed the word correctly!`, {
+    const username = getUserIdentifier(ctx.from);
+    if (username) {
+      const guess = ctx.message.text.toLowerCase();
+      if (guess.length === ctx.session.num_letters) {
+        if (new Set(guess.split("")).size !== guess.length) {
+          return ctx.reply("All letters should be unique", {
             reply_parameters: { message_id: ctx.msg.message_id },
           });
-        } else {
-          const matched = guess.split("").filter((l) => word.includes(l));
-          const score = matched.length;
-          ctx.reply(`Score ${score}. Matched: ${matched.join("")}`, {
-            reply_parameters: { message_id: ctx.msg.message_id },
-          });
+        }
+        const user = ctx.session.users.find((t) => t.username === username);
+        if (user) {
+          const word = user.wordToGuess;
+          if (guess === word) {
+            const { session } = ctx;
+            const { scores } = session;
+            if (scores[username] == undefined) {
+              scores[username] = 1;
+            } else {
+              scores[username]++;
+            }
+            const scoresResult = formatScores(session);
+            session.mode = "idle";
+            session.users.length = 0;
+
+            return ctx.reply(
+              `${username} has guessed the word correctly! Current scores: ${scoresResult}`,
+              {
+                reply_parameters: { message_id: ctx.msg.message_id },
+              },
+            );
+          } else {
+            const matched = guess.split("").filter((l) => word.includes(l));
+            const score = matched.length;
+            return ctx.reply(`Score ${score}. Matched: ${matched.join("")}`, {
+              reply_parameters: { message_id: ctx.msg.message_id },
+            });
+          }
         }
       }
     }
@@ -271,9 +344,9 @@ bot.on("message:text", (ctx) => {
 // Start the bot (using long polling)
 bot.start();
 
-Bun.serve({
-  fetch(req) {
-    return new Response("Bun!");
-  },
-  port: process.env.PORT || 3001,
-});
+// Bun.serve({
+//   fetch(req) {
+//     return new Response("Bun!");
+//   },
+//   port: process.env.PORT || 3001,
+// });
