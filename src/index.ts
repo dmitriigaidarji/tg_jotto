@@ -238,7 +238,7 @@ bot.callbackQuery(/set-letters/, async (ctx) => {
 
 bot.callbackQuery("start-game", async (ctx) => {
   const amount = ctx.session.users.length;
-  if (amount > 0) {
+  if (amount > 1) {
     ctx.session.mode = "progress";
 
     for (let i = 0; i < amount; i++) {
