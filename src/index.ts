@@ -364,7 +364,7 @@ bot.on("message:text", async (ctx) => {
             const score = matched.length;
             const matchedSet = new Set(matched);
             const pos = guess.split("").map((char, i) => {
-              if (matched[i] === char) {
+              if (word[i] === char) {
                 matchedSet.delete(char);
                 return `<u><b>${char}</b></u>`;
               } else {
