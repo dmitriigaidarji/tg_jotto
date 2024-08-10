@@ -362,7 +362,7 @@ bot.on("message:text", async (ctx) => {
           } else {
             const matched = guess.split("").filter((l) => word.includes(l));
             const score = matched.length;
-            const pos = word
+            const pos = guess
               .split("")
               .map((char, i) =>
                 matched[i] === char ? `<u><b>${char}</b></u>` : "_",
