@@ -45,7 +45,7 @@ function initial(): SessionData {
     mode: "idle",
     users: [],
     num_letters: 5,
-    validateEnglish: false,
+    validateEnglish: true,
     scores: {},
   };
 }
@@ -208,9 +208,15 @@ bot.callbackQuery(/set-word/, async (ctx) => {
 });
 
 bot.callbackQuery("toggle-validate", async (ctx) => {
+  if (ctx.session.mode === "progress") {
+    return ctx.reply(
+      "Cannot change English validation setting while the game is in progress.",
+    );
+  }
   ctx.session.validateEnglish = !ctx.session.validateEnglish;
+  ctx.session.users.length = 0;
   return ctx.reply(
-    `English dictionary validation has been ${ctx.session.validateEnglish ? "enabled" : "disabled"}!`,
+    `English dictionary validation has been ${ctx.session.validateEnglish ? "enabled" : "disabled"}! Please re-join the game.`,
   );
 });
 
@@ -235,6 +241,8 @@ bot.callbackQuery(/set-letters/, async (ctx) => {
     `Number of letters for the game is now: ${ctx.session.num_letters}! Please re-join the game.`,
   );
 });
+
+function finishGame() {}
 
 bot.callbackQuery("start-game", async (ctx) => {
   const amount = ctx.session.users.length;
