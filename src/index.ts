@@ -368,7 +368,7 @@ bot.on("message:text", async (ctx) => {
                 matchedSet.delete(char);
                 return `<u><b>${char}</b></u>`;
               } else {
-                return;
+                return "_";
               }
             });
             return ctx.replyWithHTML(
