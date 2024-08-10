@@ -362,17 +362,17 @@ bot.on("message:text", async (ctx) => {
           } else {
             const matched = guess.split("").filter((l) => word.includes(l));
             const score = matched.length;
-            const pos = guess
-              .split("")
-              .map((char, i) =>
-                matched[i] === char ? `<u><b>${char}</b></u>` : "_",
-              );
-            // const pos = matched.map((char, i) =>
-            //   word[i] === char ? `<u><b>${char}</b></u>` : "_",
-            // );
-            const nopos = matched.filter((char, i) => word[i] !== char);
+            const matchedSet = new Set(matched);
+            const pos = guess.split("").map((char, i) => {
+              if (matched[i] === char) {
+                matchedSet.delete(char);
+                return `<u><b>${char}</b></u>`;
+              } else {
+                return;
+              }
+            });
             return ctx.replyWithHTML(
-              `Score <b>${score}</b>. Matched: ${pos.join(" ")} ${nopos.length > 0 ? `(${nopos.join("")})` : ""}`,
+              `Score <b>${score}</b>. Matched: ${pos.join(" ")} ${matchedSet.size > 0 ? `(${Array.from(matchedSet).join("")})` : ""}`,
               {
                 reply_parameters: { message_id: ctx.msg.message_id },
               },
