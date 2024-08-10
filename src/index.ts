@@ -364,15 +364,15 @@ bot.on("message:text", async (ctx) => {
             const score = matched.length;
             const pos = word
               .split("")
-              .map((char) =>
-                matched.includes(char) ? `<u><b>${char}</b></u>` : "_",
+              .map((char, i) =>
+                matched[i] === char ? `<u><b>${char}</b></u>` : "_",
               );
             // const pos = matched.map((char, i) =>
             //   word[i] === char ? `<u><b>${char}</b></u>` : "_",
             // );
             const nopos = matched.filter((char, i) => word[i] !== char);
             return ctx.replyWithHTML(
-              `Score <b>${score}</b>. Matched: ${pos.join(" ")} (${nopos.join("")})`,
+              `Score <b>${score}</b>. Matched: ${pos.join(" ")} ${nopos.length > 0 ? `(${nopos.join("")})` : ""}`,
               {
                 reply_parameters: { message_id: ctx.msg.message_id },
               },
