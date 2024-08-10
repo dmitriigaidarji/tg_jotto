@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@grammyjs/conversations": "^1.2.0",
+    "@grammyjs/parse-mode": "^1.10.0",
     "dotenv": "^16.4.5",
     "grammy": "^1.28.0",
     "lodash-es": "^4.17.21",

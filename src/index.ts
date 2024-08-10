@@ -15,6 +15,8 @@ import {
 import { getPlayerWord, setPlayerWord } from "./redis.ts";
 import { validateEnglishWord } from "./dict.ts";
 import { getCurrentPlayers, getCurrentScores } from "./helpers.ts";
+import { hydrateReply, parseMode } from "@grammyjs/parse-mode";
+import type { ParseModeFlavor } from "@grammyjs/parse-mode";
 
 interface IGameUser {
   username: string;
@@ -34,7 +36,9 @@ type MyContext = Context & SessionFlavor<SessionData> & ConversationFlavor;
 type MyConversation = Conversation<MyContext>;
 
 // Create a bot object
-const bot = new Bot<MyContext>(process.env.API_KEY!); // <-- place your bot token in this string
+const bot = new Bot<ParseModeFlavor<MyContext>>(process.env.API_KEY!); // <-- place your bot token in this string
+bot.use(hydrateReply);
+
 // Install session middleware, and define the initial session value.
 function initial(): SessionData {
   return {
@@ -234,7 +238,7 @@ bot.callbackQuery(/set-letters/, async (ctx) => {
 
 bot.callbackQuery("start-game", async (ctx) => {
   const amount = ctx.session.users.length;
-  if (amount > 1) {
+  if (amount > 0) {
     ctx.session.mode = "progress";
 
     for (let i = 0; i < amount; i++) {
@@ -358,9 +362,15 @@ bot.on("message:text", async (ctx) => {
           } else {
             const matched = guess.split("").filter((l) => word.includes(l));
             const score = matched.length;
-            return ctx.reply(`Score ${score}. Matched: ${matched.join("")}`, {
-              reply_parameters: { message_id: ctx.msg.message_id },
-            });
+            const fmt = matched.map((char, i) =>
+              word[i] === char ? `<u><b>${char}</b></u>` : char,
+            );
+            return ctx.replyWithHTML(
+              `Score <b>${score}</b>. Matched: ${fmt.join("")}`,
+              {
+                reply_parameters: { message_id: ctx.msg.message_id },
+              },
+            );
           }
         }
       }
