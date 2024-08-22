@@ -36,3 +36,18 @@ export function getCurrentScores(
   }
   return `Current scores: ${scoresStr}.`;
 }
+
+export function getUserIdentifier(
+  props:
+    | {
+        username?: string;
+        id: number;
+      }
+    | undefined,
+): string | undefined {
+  if (props) {
+    const { username, id } = props;
+    return username ?? id + "";
+  }
+  return undefined;
+}

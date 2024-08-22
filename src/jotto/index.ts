@@ -14,14 +14,20 @@ import {
 } from "@grammyjs/conversations";
 import { getPlayerWord, setPlayerWord } from "./redis.ts";
 import { validateEnglishWord } from "./dict.ts";
-import { getCurrentPlayers, getCurrentScores } from "./helpers.ts";
-import { hydrateReply, parseMode } from "@grammyjs/parse-mode";
+import {
+  getCurrentPlayers,
+  getCurrentScores,
+  getUserIdentifier,
+} from "./helpers.ts";
+import { hydrateReply } from "@grammyjs/parse-mode";
 import type { ParseModeFlavor } from "@grammyjs/parse-mode";
+import * as Sentry from "@sentry/bun";
 
 interface IGameUser {
   username: string;
   wordToGuess: string;
 }
+
 export interface SessionData {
   mode: "idle" | "progress";
   users: IGameUser[];
@@ -36,7 +42,7 @@ type MyContext = Context & SessionFlavor<SessionData> & ConversationFlavor;
 type MyConversation = Conversation<MyContext>;
 
 // Create a bot object
-const bot = new Bot<ParseModeFlavor<MyContext>>(process.env.API_KEY!); // <-- place your bot token in this string
+const bot = new Bot<ParseModeFlavor<MyContext>>(process.env.JOTTO_API_KEY!);
 bot.use(hydrateReply);
 
 // Install session middleware, and define the initial session value.
@@ -66,21 +72,6 @@ await bot.api.setMyCommands([
   { command: "stop", description: "Stop the game" },
   { command: "word", description: "Set the word for your game session" },
 ]);
-
-function getUserIdentifier(
-  props:
-    | {
-        username?: string;
-        id: number;
-      }
-    | undefined,
-): string | undefined {
-  if (props) {
-    const { username, id } = props;
-    return username ?? id + "";
-  }
-  return undefined;
-}
 
 /** Defines the conversation */
 async function setWordConvo(conversation: MyConversation, ctx: MyContext) {
@@ -242,8 +233,6 @@ bot.callbackQuery(/set-letters/, async (ctx) => {
   );
 });
 
-function finishGame() {}
-
 bot.callbackQuery("start-game", async (ctx) => {
   const amount = ctx.session.users.length;
   if (amount > 1) {
@@ -392,8 +381,15 @@ bot.on("message:text", async (ctx) => {
   }
 });
 
-// Start the bot (using long polling)
-bot.start();
+Sentry.init({
+  dsn: process.env.JOTTO_SENTRY,
+  // Tracing
+  tracesSampleRate: 1.0, // Capture 100% of the transactions
+});
+
+bot.start().catch((e) => {
+  Sentry.captureException(e);
+});
 
 // Bun.serve({
 //   fetch(req) {

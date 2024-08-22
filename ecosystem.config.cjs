@@ -4,7 +4,7 @@ module.exports = {
   apps: [
     {
       name: "tg-jotto", // Name of your application
-      script: "src/index.ts", // Entry point of your application
+      script: "src/jotto/index.ts", // Entry point of your application
       interpreter: "/usr/local/bin/bun", // Path to the Bun interpreter
     },
   ],
@@ -20,7 +20,7 @@ module.exports = {
         "bun i && pm2 reload ecosystem.config.cjs --env production",
       "pre-setup": "",
       env: {
-        API_KEY: process.env.API_KEY,
+        JOTTO_API_KEY: process.env.JOTTO_API_KEY,
         PORT: process.env.PORT,
       },
     },
