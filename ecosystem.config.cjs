@@ -20,6 +20,7 @@ module.exports = {
         "bun i && pm2 reload ecosystem.config.cjs --env production",
       "pre-setup": "",
       env: {
+        JOTTO_SENTRY: process.env.JOTTO_SENTRY,
         JOTTO_API_KEY: process.env.JOTTO_API_KEY,
         PORT: process.env.PORT,
       },
