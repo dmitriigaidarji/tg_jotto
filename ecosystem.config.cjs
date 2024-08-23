@@ -7,6 +7,11 @@ module.exports = {
       script: "src/jotto/index.ts", // Entry point of your application
       interpreter: "/usr/local/bin/bun", // Path to the Bun interpreter
     },
+    {
+      name: "tg-surf", // Name of your application
+      script: "src/surf/index.ts", // Entry point of your application
+      interpreter: "/usr/local/bin/bun", // Path to the Bun interpreter
+    },
   ],
   deploy: {
     production: {
@@ -22,6 +27,8 @@ module.exports = {
       env: {
         JOTTO_SENTRY: process.env.JOTTO_SENTRY,
         JOTTO_API_KEY: process.env.JOTTO_API_KEY,
+        SURF_API_KEY: process.env.SURF_API_KEY,
+        SURF_SENTRY: process.env.SURF_SENTRY,
         PORT: process.env.PORT,
       },
     },

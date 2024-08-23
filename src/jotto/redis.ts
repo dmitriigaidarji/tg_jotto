@@ -24,5 +24,3 @@ export function setPlayerWord({
 export function getPlayerWord(username: string) {
   return redisClient.get(keyForWord(username));
 }
-
-export default redisClient;

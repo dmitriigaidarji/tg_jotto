@@ -9,6 +9,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/jsdom": "^21.1.7",
     "@types/lodash-es": "^4.17.12",
     "prettier": "^3.3.3"
   },
@@ -19,9 +20,12 @@
     "@grammyjs/conversations": "^1.2.0",
     "@grammyjs/parse-mode": "^1.10.0",
     "@sentry/bun": "^8.26.0",
+    "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
     "grammy": "^1.28.0",
+    "jsdom": "^24.1.1",
     "lodash-es": "^4.17.21",
-    "redis": "^4.7.0"
+    "redis": "^4.7.0",
+    "table": "^6.8.2"
   }
 }
