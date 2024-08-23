@@ -1,5 +1,6 @@
 import surfRedisClient from "./redis.ts";
 import { table } from "table";
+import { format } from "date-fns";
 
 interface ITide {
   date: Date;
@@ -74,9 +75,16 @@ async function fetchTideFromSurfLineAPI(): Promise<ITide[]> {
     });
 }
 
+function formatDate(date: Date, utcOffsetHrs: number) {
+  const baseTzOffset = utcOffsetHrs * 60;
+  const tzOffset = date.getTimezoneOffset();
+  const d = new Date(date.valueOf() + (baseTzOffset + tzOffset) * 60 * 1000);
+  return format(d, "d MMM yyyy h:mm aa");
+}
+
 export function renderTidesAsTable(data: ITide[]): string {
-  const r = data.map((t) => [t.date.toLocaleString(), t.type, t.height]);
-  r.unshift(["Date", "Peak", "Height"]);
+  const r = data.map((t) => [formatDate(t.date, 8), t.type, t.height]);
+  r.unshift(["Local Time", "Peak", "Height"]);
   return table(r);
 }
 
