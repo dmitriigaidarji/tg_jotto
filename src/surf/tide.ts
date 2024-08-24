@@ -60,7 +60,7 @@ async function fetchTideFromSurfLineAPI(): Promise<ITide[]> {
       }) => {
         const { tides } = r.data;
         return tides
-          .filter((t, i) => t.type !== "NORMAL" || i === 0)
+          .filter((t, i) => t.type !== "NORMAL")
           .map((t) => ({
             ...t,
             date: new Date(t.timestamp * 1000),
