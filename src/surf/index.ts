@@ -34,7 +34,7 @@ bot.command("surf", (ctx) => {
     ),
     fetchTideFromSurfLineAPI().then((tides) =>
       ctx.replyWithMarkdownV2(
-        `*Tide forecast:*${"```" + renderTidesAsTable(tides.slice(0, 10)) + "```"}`,
+        `*Tide forecast:*${"```" + renderTidesAsTable(tides) + "```"}`,
       ),
     ),
   ]);

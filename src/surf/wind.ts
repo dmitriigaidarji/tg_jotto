@@ -15,7 +15,7 @@ function tableParse({
   index: number;
 }): string[] {
   return Array.from(table.querySelectorAll("tr")[index].querySelectorAll("td"))
-    .slice(-4, 1000)
+    .slice(-3, 1000)
     .map((t) => t.textContent!);
 }
 export async function fetchWindSpeedAsKnots(): Promise<IWind[]> {

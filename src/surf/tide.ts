@@ -1,6 +1,6 @@
 import surfRedisClient from "./redis.ts";
 import { table } from "table";
-import { format } from "date-fns";
+import { format, isBefore } from "date-fns";
 
 interface ITide {
   date: Date;
@@ -83,7 +83,13 @@ function formatDate(date: Date, utcOffsetHrs: number) {
 }
 
 export function renderTidesAsTable(data: ITide[]): string {
-  const r = data.map((t) => [formatDate(t.date, 8), t.type, t.height]);
+  const d = new Date();
+  let start = 0;
+  while (isBefore(data[start].date, d)) {
+    start++;
+  }
+  const current = data.slice(start, 2);
+  const r = current.map((t) => [formatDate(t.date, 8), t.type, t.height]);
   r.unshift(["Local Time", "Peak", "Height"]);
   return table(r);
 }
