@@ -88,7 +88,7 @@ export function renderTidesAsTable(data: ITide[]): string {
   while (isBefore(data[start].date, d)) {
     start++;
   }
-  const current = data.slice(start, 2);
+  const current = data.slice(start, 3);
   const r = current.map((t) => [formatDate(t.date, 8), t.type, t.height]);
   r.unshift(["Local Time", "Peak", "Height"]);
   return table(r);
