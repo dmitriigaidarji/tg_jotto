@@ -75,20 +75,23 @@ async function fetchTideFromSurfLineAPI(): Promise<ITide[]> {
     });
 }
 
-function formatDate(date: Date, utcOffsetHrs: number) {
+export function formatDate(date: Date, utcOffsetHrs: number) {
   const baseTzOffset = utcOffsetHrs * 60;
   const tzOffset = date.getTimezoneOffset();
   const d = new Date(date.valueOf() + (baseTzOffset + tzOffset) * 60 * 1000);
   return format(d, "d MMM yyyy h:mm aa");
 }
 
-export function renderTidesAsTable(data: ITide[]): string {
+export function filterTides(data: ITide[]): ITide[] {
   const d = new Date();
   let start = 0;
-  while (isBefore(data[start].date, d)) {
+  while (isBefore(data[start + 1].date, d) && start - 1 < data.length) {
     start++;
   }
-  const current = data.slice(start, 3);
+  return data.slice(start, start + 4);
+}
+export function renderTidesAsTable(data: ITide[]): string {
+  const current = filterTides(data);
   const r = current.map((t) => [formatDate(t.date, 8), t.type, t.height]);
   r.unshift(["Local Time", "Peak", "Height"]);
   return table(r);
