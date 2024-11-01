@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "export DEBUG=grammy* bun --hot run src/jotto/index.ts",
     "start": "bun run src/jotto/index.ts",
+    "start-surf": "bun run src/surf/index.ts",
     "deploy": "pm2 deploy production"
   },
   "devDependencies": {
@@ -25,6 +26,7 @@
     "grammy": "^1.28.0",
     "jsdom": "^24.1.1",
     "lodash-es": "^4.17.21",
+    "openai": "^4.69.0",
     "redis": "^4.7.0",
     "table": "^6.8.2"
   }

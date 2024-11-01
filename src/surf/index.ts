@@ -1,13 +1,10 @@
 import { Bot, type CommandContext, Context, InlineKeyboard } from "grammy";
 import { hydrateReply, type ParseModeFlavor } from "@grammyjs/parse-mode";
 
-import { fetchWindSpeedAsKnots, renderWindsAsTable } from "./wind.ts";
-import fetchTideFromSurfLineAPI, {
-  filterTides,
-  formatDate,
-  renderTidesAsTable,
-} from "./tide.ts";
+import { fetchWindSpeedAsKnots } from "./wind.ts";
+import fetchTideFromSurfLineAPI, { filterTides, formatDate } from "./tide.ts";
 import * as Sentry from "@sentry/bun";
+import { askAI } from "./ai.ts";
 
 Sentry.init({
   dsn: process.env.SURF_SENTRY,
@@ -77,6 +74,37 @@ bot.command("tide", (ctx) => {
 bot.command("wind", (ctx) => {
   return calcWindInfo(ctx);
 });
+
+const lastMessages: string[] = [];
+
+bot.on("message:text", async (ctx) => {
+  const text = ctx.message.text.trim();
+  const message = `${ctx.from.first_name}: ${text}`;
+  lastMessages.push(message);
+  while (lastMessages.length > 20) {
+    lastMessages.unshift();
+  }
+  const lowerText = text.toLowerCase();
+
+  if (["bot"].some((t) => lowerText.includes(t))) {
+    const response = await askAI({
+      messages: [
+        {
+          role: "user",
+          content: message,
+        },
+      ],
+      lastMessages,
+    });
+    if (response) {
+      lastMessages.push(`Assistant: ${response}`);
+      return ctx.reply(response, {
+        reply_parameters: { message_id: ctx.msg.message_id },
+      });
+    }
+  }
+});
+
 bot.start().catch((e) => {
   Sentry.captureException(e);
 });

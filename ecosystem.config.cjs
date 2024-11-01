@@ -29,6 +29,7 @@ module.exports = {
         JOTTO_API_KEY: process.env.JOTTO_API_KEY,
         SURF_API_KEY: process.env.SURF_API_KEY,
         SURF_SENTRY: process.env.SURF_SENTRY,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
         PORT: process.env.PORT,
       },
     },
