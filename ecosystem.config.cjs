@@ -22,7 +22,7 @@ module.exports = {
       path: "/root/projects/tg_jotto",
       "pre-deploy-local": "",
       "post-deploy":
-        "bun i && pm2 reload ecosystem.config.cjs --env production",
+        "bun i && pm2 reload ecosystem.config.cjs --env production --time",
       "pre-setup": "",
       env: {
         JOTTO_SENTRY: process.env.JOTTO_SENTRY,
