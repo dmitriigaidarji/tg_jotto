@@ -81,7 +81,7 @@ bot.on("message:text", async (ctx) => {
   const text = ctx.message.text.trim();
   const message = `${ctx.from.first_name}: ${text}`;
   lastMessages.push(message);
-  while (lastMessages.length > 20) {
+  while (lastMessages.length > 40) {
     lastMessages.unshift();
   }
   const lowerText = text.toLowerCase();

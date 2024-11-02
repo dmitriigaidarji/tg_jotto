@@ -1,4 +1,4 @@
-import surfRedisClient from "./redis.ts";
+// import surfRedisClient from "./redis.ts";
 import { table } from "table";
 import { format, isBefore } from "date-fns";
 
@@ -11,7 +11,7 @@ interface ITide {
 }
 async function fetchTideFromSurfLineAPI(): Promise<ITide[]> {
   const cacheKey = "siargao-tides";
-  const cached = await surfRedisClient.get(cacheKey);
+  const cached = null; //await surfRedisClient.get(cacheKey);
   if (cached) {
     try {
       const parsed = JSON.parse(cached) as any[];
@@ -68,9 +68,9 @@ async function fetchTideFromSurfLineAPI(): Promise<ITide[]> {
       },
     )
     .then(async (data) => {
-      await surfRedisClient
-        .set(cacheKey, JSON.stringify(data))
-        .then(() => surfRedisClient.expire(cacheKey, 3600));
+      // await surfRedisClient
+      //   .set(cacheKey, JSON.stringify(data))
+      //   .then(() => surfRedisClient.expire(cacheKey, 3600));
       return data;
     });
 }
