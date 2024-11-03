@@ -46,5 +46,3 @@ export async function getSurfLineForecast() {
   await browser.close();
   return forecast;
 }
-
-getSurfLineForecast();

@@ -104,7 +104,7 @@ async function getLatestMessages(): Promise<string[]> {
 }
 
 bot.on("message:text", async (ctx) => {
-  console.log(await ctx.getChat());
+  console.log("chat id", (await ctx.getChat()).id);
   const text = ctx.message.text.trim();
   const message = `${ctx.from.first_name}: ${text}`;
 
@@ -132,6 +132,7 @@ bot.on("message:text", async (ctx) => {
       ],
       lastMessages,
     });
+    console.log("ai response", response);
     if (response) {
       lastMessageDate = new Date();
       isBotMessageLast = true;
