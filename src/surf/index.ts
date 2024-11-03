@@ -4,7 +4,9 @@ import { hydrateReply, type ParseModeFlavor } from "@grammyjs/parse-mode";
 import { fetchWindSpeedAsKnots } from "./wind.ts";
 import fetchTideFromSurfLineAPI, { filterTides, formatDate } from "./tide.ts";
 import * as Sentry from "@sentry/bun";
-import { askAI } from "./ai.ts";
+import { askAI, askRandomQuestion, askSummaryAndSaveToFile } from "./ai.ts";
+import surfRedisClient from "./redis.ts";
+import { differenceInHours, isAfter } from "date-fns";
 
 Sentry.init({
   dsn: process.env.SURF_SENTRY,
@@ -75,15 +77,42 @@ bot.command("wind", (ctx) => {
   return calcWindInfo(ctx);
 });
 
-const lastMessages: string[] = [];
+const doSummaryEveryNLines = 60;
+let summaryLineCounter = 0;
+let lastMessageDate = new Date();
+let isBotMessageLast = false;
+const lastMessagesKey = "last_messages";
+const chatId = -4198414171;
+
+async function getLatestMessages(): Promise<string[]> {
+  const cached = await surfRedisClient.get(lastMessagesKey);
+  let lastMessages: string[] = [];
+  if (cached) {
+    try {
+      lastMessages = JSON.parse(cached);
+    } catch (err) {}
+  }
+  return lastMessages;
+}
 
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text.trim();
   const message = `${ctx.from.first_name}: ${text}`;
+
+  const lastMessages = await getLatestMessages();
+  // max N messages
   lastMessages.push(message);
-  while (lastMessages.length > 40) {
+  while (lastMessages.length > doSummaryEveryNLines) {
     lastMessages.shift();
   }
+
+  if (true) {
+    await askSummaryAndSaveToFile({ lastMessages });
+  }
+  // if (++summaryLineCounter >= doSummaryEveryNLines) {
+  //   await askSummaryAndSaveToFile({ lastMessages });
+  // }
+
   const lowerText = text.toLowerCase();
 
   if (["bot"].some((t) => lowerText.includes(t))) {
@@ -97,13 +126,30 @@ bot.on("message:text", async (ctx) => {
       lastMessages,
     });
     if (response) {
+      lastMessageDate = new Date();
+      isBotMessageLast = true;
       lastMessages.push(`Assistant: ${response}`);
       return ctx.reply(response, {
         reply_parameters: { message_id: ctx.msg.message_id },
       });
     }
   }
+  await surfRedisClient.set(lastMessagesKey, JSON.stringify(lastMessages));
 });
+
+async function randomAIMessages() {
+  if (!isBotMessageLast && differenceInHours(new Date(), lastMessageDate) > 1) {
+    lastMessageDate = new Date();
+    isBotMessageLast = true;
+    const lastMessages = await getLatestMessages();
+    const q = await askRandomQuestion({ lastMessages });
+    if (q) {
+      return bot.api.sendMessage(chatId, q);
+    }
+  }
+}
+
+setInterval(randomAIMessages, 1000 * 5);
 
 bot.start().catch((e) => {
   Sentry.captureException(e);

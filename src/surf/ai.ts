@@ -15,10 +15,10 @@ const initialMessages: AIMessage[] = [
 Be aggressive and reply in an informal manner. Do your best to do whatever you are being asked of. Be agreeable.
 Try to satisfy the sender of the message.
 Use slurs in your replies from time to time, those include but not limited to: idiot, fucker, stupid, asshole. 
-If you are unable to answer any question, then insult the user instead for asking a bad question.
+If you are unable to answer any question, then answer with your best guess.
 Do not greet the sender in your replies if not needed.
 There are 3 people you should know about:
-First, Dima (Dmitrii) is the programmer who created you.
+First, Dima (Dmitrii) is the programmer who created you. He just became a father.
 Second, Vlad (Vladimir) is a russian guy who grew up in Germany. Has a resort called Prana.
 Third, Erik half filipino half german. Has a big house he is proud of in Tawin, Siargao. Has horses.
 All three guys live in Siargao. All three of them surf. Surf is the main topic of their conversations.
@@ -27,6 +27,26 @@ The incoming messages will start with the name of the sender and continue with m
 `,
   },
 ];
+const summaryFilePath = "compiled/summary.txt";
+async function learnedSummary(): Promise<AIMessage> {
+  const file = Bun.file(summaryFilePath);
+  if (await file.exists()) {
+    const text = await file.text();
+    return {
+      role: "system",
+      content: `This is additional summary about every person: ${text}`,
+    };
+  } else {
+    return {
+      role: "system",
+      content: `This is additional summary about every person:
+1. **Dmitrii**: The programmer in the group who probably gets razzed about his knowledge of surf spots—seriously dude, get your act together! He just became a father too; hope he’s not back to sleep deprivation with parenting!
+2. **Vladimir**: The cheeky Russian guy throwing jabs at everyone and never missing an opportunity for some sarcasm or humor—especially when it comes to Erik's overpriced land prices and love for trolling during surf sessions.
+3. **Erik**: Our half-Filipino half-German buddy who wants everyone to admire his big house and horse skills while dealing with Vlad's relentless teasing about surfing—and let’s be honest here; he could use some improvement in that department!
+      `,
+    };
+  }
+}
 function convertUserMessage(messages: string[]): AIMessage {
   return {
     role: "system",
@@ -50,10 +70,67 @@ export async function askAI({
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: initialMessages
-      .concat([convertUserMessage(lastMessages)])
+      .concat([await learnedSummary(), convertUserMessage(lastMessages)])
       .concat(messages),
     max_completion_tokens: 1024,
-    frequency_penalty: 2,
+    frequency_penalty: 1,
+    response_format: {
+      type: "text",
+    },
+  });
+  return response.choices[0]?.message.content;
+}
+
+async function askSummary({ lastMessages }: { lastMessages: string[] }) {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: initialMessages
+      .concat([await learnedSummary(), convertUserMessage(lastMessages)])
+      .concat([
+        {
+          role: "system",
+          content:
+            "do an extensive summary about every person that you learned that I can then feed back to you for self learning",
+        },
+      ]),
+    max_completion_tokens: 1024,
+    frequency_penalty: 1,
+    response_format: {
+      type: "text",
+    },
+  });
+  return response.choices[0]?.message.content;
+}
+
+export async function askSummaryAndSaveToFile({
+  lastMessages,
+}: {
+  lastMessages: string[];
+}) {
+  const summary = await askSummary({ lastMessages });
+  if (summary) {
+    return Bun.write(summaryFilePath, summary);
+  }
+}
+
+export async function askRandomQuestion({
+  lastMessages,
+}: {
+  lastMessages: string[];
+}) {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: initialMessages
+      .concat([await learnedSummary(), convertUserMessage(lastMessages)])
+      .concat([
+        {
+          role: "system",
+          content:
+            "Ask a random member of the chat a random question. Try to be provocative to trigger an immediate response",
+        },
+      ]),
+    max_completion_tokens: 1024,
+    frequency_penalty: 1,
     response_format: {
       type: "text",
     },
