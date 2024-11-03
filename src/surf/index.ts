@@ -6,7 +6,7 @@ import fetchTideFromSurfLineAPI, { filterTides, formatDate } from "./tide.ts";
 import * as Sentry from "@sentry/bun";
 import { askAI, askRandomQuestion, askSummaryAndSaveToFile } from "./ai.ts";
 import surfRedisClient from "./redis.ts";
-import { differenceInHours, isAfter } from "date-fns";
+import { differenceInHours } from "date-fns";
 
 Sentry.init({
   dsn: process.env.SURF_SENTRY,
@@ -106,12 +106,10 @@ bot.on("message:text", async (ctx) => {
     lastMessages.shift();
   }
 
-  if (true) {
-    await askSummaryAndSaveToFile({ lastMessages });
+  if (++summaryLineCounter >= doSummaryEveryNLines) {
+    summaryLineCounter = 0;
+    askSummaryAndSaveToFile({ lastMessages });
   }
-  // if (++summaryLineCounter >= doSummaryEveryNLines) {
-  //   await askSummaryAndSaveToFile({ lastMessages });
-  // }
 
   const lowerText = text.toLowerCase();
 
@@ -149,7 +147,7 @@ async function randomAIMessages() {
   }
 }
 
-setInterval(randomAIMessages, 1000 * 5);
+setInterval(randomAIMessages, 1000 * 60 * 60);
 
 bot.start().catch((e) => {
   Sentry.captureException(e);
