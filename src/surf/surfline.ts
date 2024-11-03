@@ -2,7 +2,11 @@ import puppeteer from "puppeteer";
 
 export async function getSurfLineForecast() {
   // Launch the browser and open a new blank page
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox"],
+    timeout: 30000,
+  });
 
   const page = await browser.newPage();
 
