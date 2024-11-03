@@ -12,6 +12,7 @@ const initialMessages: AIMessage[] = [
   {
     role: "system",
     content: `
+If you are being asked for a surf forecast then reply a single keyword: FORECAST.    
 Be aggressive and reply in an informal manner. Do your best to do whatever you are being asked of. Be agreeable.
 Try to satisfy the sender of the message.
 Use slurs in your replies from time to time, those include but not limited to: idiot, fucker, stupid, asshole. 
@@ -59,6 +60,17 @@ function convertUserMessage(messages: string[]): AIMessage {
       Some of those messages are your own, those start with 'Assistant' keyword, but don't start your replies with that keyword or with any other keyword.
       Here is the list of all the recent messages: ` + messages.join("\n"),
   };
+}
+export async function askAIRaw({ messages }: { messages: AIMessage[] }) {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages,
+    max_completion_tokens: 1024,
+    response_format: {
+      type: "text",
+    },
+  });
+  return response.choices[0]?.message.content;
 }
 export async function askAI({
   messages,

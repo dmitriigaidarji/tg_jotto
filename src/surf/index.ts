@@ -4,9 +4,15 @@ import { hydrateReply, type ParseModeFlavor } from "@grammyjs/parse-mode";
 import { fetchWindSpeedAsKnots } from "./wind.ts";
 import fetchTideFromSurfLineAPI, { filterTides, formatDate } from "./tide.ts";
 import * as Sentry from "@sentry/bun";
-import { askAI, askRandomQuestion, askSummaryAndSaveToFile } from "./ai.ts";
+import {
+  askAI,
+  askAIRaw,
+  askRandomQuestion,
+  askSummaryAndSaveToFile,
+} from "./ai.ts";
 import surfRedisClient from "./redis.ts";
 import { differenceInHours } from "date-fns";
+import { getSurfLineForecast } from "./surfline.ts";
 
 Sentry.init({
   dsn: process.env.SURF_SENTRY,
@@ -82,6 +88,8 @@ let summaryLineCounter = 0;
 let lastMessageDate = new Date();
 let isBotMessageLast = false;
 const lastMessagesKey = "last_messages";
+const lastForecastKey = "forecast";
+
 const chatId = -4198414171;
 
 async function getLatestMessages(): Promise<string[]> {
@@ -96,6 +104,7 @@ async function getLatestMessages(): Promise<string[]> {
 }
 
 bot.on("message:text", async (ctx) => {
+  console.log(await ctx.getChat());
   const text = ctx.message.text.trim();
   const message = `${ctx.from.first_name}: ${text}`;
 
@@ -126,10 +135,40 @@ bot.on("message:text", async (ctx) => {
     if (response) {
       lastMessageDate = new Date();
       isBotMessageLast = true;
-      lastMessages.push(`Assistant: ${response}`);
-      return ctx.reply(response, {
-        reply_parameters: { message_id: ctx.msg.message_id },
-      });
+      // asking forecast
+      if (
+        response.length < 10 &&
+        response.toUpperCase().startsWith("FORECAST")
+      ) {
+        let forecast = await surfRedisClient.get(lastForecastKey);
+        if (!forecast) {
+          forecast = (await getSurfLineForecast()) ?? null;
+          if (forecast) {
+            await surfRedisClient.set(lastForecastKey, forecast);
+            await surfRedisClient.expire(lastForecastKey, 60 * 60 * 12); // 12h
+          }
+        }
+        if (forecast) {
+          const forecastResponse = await askAIRaw({
+            messages: [
+              {
+                role: "system",
+                content: `Do a surf forecast based on the data below. Include rating from the data. Additional request details from the user: "${text}". Data:\n${forecast}`,
+              },
+            ],
+          });
+          if (forecastResponse) {
+            return ctx.reply(forecastResponse, {
+              reply_parameters: { message_id: ctx.msg.message_id },
+            });
+          }
+        }
+      } else {
+        lastMessages.push(`Assistant: ${response}`);
+        return ctx.reply(response, {
+          reply_parameters: { message_id: ctx.msg.message_id },
+        });
+      }
     }
   }
   await surfRedisClient.set(lastMessagesKey, JSON.stringify(lastMessages));
