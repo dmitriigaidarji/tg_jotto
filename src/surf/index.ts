@@ -110,6 +110,7 @@ bot.on("message:text", async (ctx) => {
 
   const lastMessages = await getLatestMessages();
 
+  let assistantMessage: string | undefined;
   const lowerText = text.toLowerCase();
 
   if (["bot"].some((t) => lowerText.includes(t))) {
@@ -149,14 +150,14 @@ bot.on("message:text", async (ctx) => {
             ],
           });
           if (forecastResponse) {
-            return ctx.reply(forecastResponse, {
+            ctx.reply(forecastResponse, {
               reply_parameters: { message_id: ctx.msg.message_id },
             });
           }
         }
       } else {
-        lastMessages.push(`Assistant: ${response}`);
-        return ctx.reply(response, {
+        assistantMessage = `Assistant: ${response}`;
+        ctx.reply(response, {
           reply_parameters: { message_id: ctx.msg.message_id },
         });
       }
@@ -165,6 +166,9 @@ bot.on("message:text", async (ctx) => {
 
   // max N messages
   lastMessages.push(message);
+  if (assistantMessage) {
+    lastMessages.push(assistantMessage);
+  }
   while (lastMessages.length > doSummaryEveryNLines) {
     lastMessages.shift();
   }
