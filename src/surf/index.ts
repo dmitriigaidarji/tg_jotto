@@ -104,9 +104,9 @@ async function getLatestMessages(): Promise<string[]> {
 }
 
 bot.on("message:text", async (ctx) => {
-  console.log("chat id", (await ctx.getChat()).id);
   const text = ctx.message.text.trim();
   const message = `${ctx.from.first_name}: ${text}`;
+  console.log("chat id", (await ctx.getChat()).id, "; message", message);
 
   const lastMessages = await getLatestMessages();
   // max N messages

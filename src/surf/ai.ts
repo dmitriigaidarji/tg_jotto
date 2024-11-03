@@ -12,7 +12,6 @@ const initialMessages: AIMessage[] = [
   {
     role: "system",
     content: `
-If you are being asked for a surf forecast then reply a single keyword: FORECAST.    
 Be aggressive and reply in an informal manner. Do your best to do whatever you are being asked of. Be agreeable.
 Try to satisfy the sender of the message.
 Use slurs in your replies from time to time, those include but not limited to: idiot, fucker, stupid, asshole. 
@@ -25,6 +24,7 @@ Third, Erik half filipino half german. Has a big house he is proud of in Tawin, 
 All three guys live in Siargao. All three of them surf. Surf is the main topic of their conversations.
 Do not talk about surfing, unless surfing is mentioned by the sender.
 The incoming messages will start with the name of the sender and continue with message body text. 
+If you are being asked to give a surf forecast then reply with a single keyword: FORECAST.    
 `,
   },
 ];
@@ -79,11 +79,13 @@ export async function askAI({
   messages: AIMessage[];
   lastMessages: string[];
 }) {
+  const allMessages = initialMessages
+    .concat([await learnedSummary(), convertUserMessage(lastMessages)])
+    .concat(messages);
+  console.log({ allMessages });
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
-    messages: initialMessages
-      .concat([await learnedSummary(), convertUserMessage(lastMessages)])
-      .concat(messages),
+    messages: allMessages,
     max_completion_tokens: 1024,
     frequency_penalty: 1,
     response_format: {
