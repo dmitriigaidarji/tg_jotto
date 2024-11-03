@@ -109,16 +109,6 @@ bot.on("message:text", async (ctx) => {
   console.log("chat id", (await ctx.getChat()).id, "; message", message);
 
   const lastMessages = await getLatestMessages();
-  // max N messages
-  lastMessages.push(message);
-  while (lastMessages.length > doSummaryEveryNLines) {
-    lastMessages.shift();
-  }
-
-  if (++summaryLineCounter >= doSummaryEveryNLines) {
-    summaryLineCounter = 0;
-    askSummaryAndSaveToFile({ lastMessages });
-  }
 
   const lowerText = text.toLowerCase();
 
@@ -171,6 +161,17 @@ bot.on("message:text", async (ctx) => {
         });
       }
     }
+  }
+
+  // max N messages
+  lastMessages.push(message);
+  while (lastMessages.length > doSummaryEveryNLines) {
+    lastMessages.shift();
+  }
+
+  if (++summaryLineCounter >= doSummaryEveryNLines) {
+    summaryLineCounter = 0;
+    askSummaryAndSaveToFile({ lastMessages });
   }
   await surfRedisClient.set(lastMessagesKey, JSON.stringify(lastMessages));
 });
