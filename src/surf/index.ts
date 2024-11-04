@@ -161,7 +161,11 @@ bot.on("message:text", async (ctx) => {
           reply_parameters: { message_id: ctx.msg.message_id },
         });
       }
+    } else {
+      isBotMessageLast = false;
     }
+  } else {
+    isBotMessageLast = false;
   }
 
   // max N messages
@@ -191,9 +195,10 @@ async function randomAIMessages() {
     }
   }
 }
-
 setInterval(randomAIMessages, 1000 * 60 * 60);
 
 bot.start().catch((e) => {
   Sentry.captureException(e);
 });
+
+randomAIMessages();
