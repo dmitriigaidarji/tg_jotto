@@ -85,7 +85,7 @@ bot.command("wind", (ctx) => {
 
 const doSummaryEveryNLines = 60;
 let summaryLineCounter = 0;
-let lastMessageDate = subDays(new Date(), 1);
+let lastMessageDate = new Date();
 let isBotMessageLast = false;
 const lastMessagesKey = "last_messages";
 const lastForecastKey = "forecast";
@@ -105,7 +105,16 @@ async function getLatestMessages(): Promise<string[]> {
 
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text.trim();
-  const message = `${ctx.from.first_name}: ${text}`;
+  let first_name = ctx.from.first_name;
+  switch (first_name.toUpperCase()) {
+    case "E":
+      first_name = "Erik";
+      break;
+    case "V":
+      first_name = "Vladimir";
+      break;
+  }
+  const message = `${first_name}: ${text}`;
   console.log("chat id", (await ctx.getChat()).id, "; message", message);
 
   const lastMessages = await getLatestMessages();
@@ -191,6 +200,7 @@ async function randomAIMessages() {
     const lastMessages = await getLatestMessages();
     const q = await askRandomQuestion({ lastMessages });
     if (q) {
+      lastMessages.push(`Assistant: ${q}`);
       return bot.api.sendMessage(chatId, q);
     }
   }
