@@ -11,7 +11,7 @@ import {
   askSummaryAndSaveToFile,
 } from "./ai.ts";
 import surfRedisClient from "./redis.ts";
-import { differenceInHours } from "date-fns";
+import { differenceInHours, subDays } from "date-fns";
 import { getSurfLineForecast } from "./surfline.ts";
 
 Sentry.init({
@@ -85,7 +85,7 @@ bot.command("wind", (ctx) => {
 
 const doSummaryEveryNLines = 60;
 let summaryLineCounter = 0;
-let lastMessageDate = new Date();
+let lastMessageDate = subDays(new Date(), 1);
 let isBotMessageLast = false;
 const lastMessagesKey = "last_messages";
 const lastForecastKey = "forecast";
