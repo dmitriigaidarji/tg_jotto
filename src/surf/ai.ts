@@ -140,7 +140,7 @@ export async function askRandomQuestion({
         {
           role: "system",
           content:
-            "Ask a random member of the chat a random question. Try to be provocative to trigger an immediate response",
+            "Ask either Vlad or Erik a random question. Try to be provocative to trigger an immediate response",
         },
       ]),
     max_completion_tokens: 1024,
