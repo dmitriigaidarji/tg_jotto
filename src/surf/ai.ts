@@ -151,3 +151,16 @@ export async function askRandomQuestion({
   });
   return response.choices[0]?.message.content;
 }
+
+export async function textToSpeech(input: string) {
+  const response = await openai.audio.speech.create({
+    model: "tts-1",
+    voice: "shimmer",
+    input,
+  });
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const filename = "/tmp/" + new Date().getTime() + ".mp3";
+  await Bun.write(filename, buffer);
+  return filename;
+}
