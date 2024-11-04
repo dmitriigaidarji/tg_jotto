@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { InputFile } from "grammy";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -160,7 +161,7 @@ export async function textToSpeech(input: string) {
   });
 
   const buffer = Buffer.from(await response.arrayBuffer());
-  const filename = "/tmp/" + new Date().getTime() + ".mp3";
-  await Bun.write(filename, buffer);
-  return filename;
+  // const filename = "/tmp/" + new Date().getTime() + ".mp3";
+  // await Bun.write(filename, buffer);
+  return new InputFile(buffer);
 }
