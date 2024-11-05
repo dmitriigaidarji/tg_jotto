@@ -9,7 +9,6 @@ import {
   askAIRaw,
   askRandomQuestion,
   askSummaryAndSaveToFile,
-  textToSpeech,
 } from "./ai.ts";
 import surfRedisClient from "./redis.ts";
 import { differenceInHours, subDays } from "date-fns";
@@ -170,10 +169,10 @@ bot.on("message:text", async (ctx) => {
         ctx.reply(response, {
           reply_parameters: { message_id: ctx.msg.message_id },
         });
-        const audio = await textToSpeech(response);
-        ctx.replyWithAudio(audio, {
-          reply_parameters: { message_id: ctx.msg.message_id },
-        });
+        // const audio = await textToSpeech(response);
+        // ctx.replyWithAudio(audio, {
+        //   reply_parameters: { message_id: ctx.msg.message_id },
+        // });
       }
     } else {
       isBotMessageLast = false;
@@ -206,8 +205,8 @@ async function randomAIMessages() {
     const q = await askRandomQuestion({ lastMessages });
     if (q) {
       lastMessages.push(`Assistant: ${q}`);
-      const audio = await textToSpeech(q);
-      bot.api.sendAudio(chatId, audio);
+      // const audio = await textToSpeech(q);
+      // bot.api.sendAudio(chatId, audio);
       return bot.api.sendMessage(chatId, q);
     }
   }
