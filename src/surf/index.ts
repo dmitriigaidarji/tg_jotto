@@ -83,7 +83,7 @@ bot.command("wind", (ctx) => {
   return calcWindInfo(ctx);
 });
 
-const doSummaryEveryNLines = 60;
+const doSummaryEveryNLines = 80;
 let summaryLineCounter = 0;
 let lastMessageDate = subDays(new Date(), 1);
 let isBotMessageLast = false;
