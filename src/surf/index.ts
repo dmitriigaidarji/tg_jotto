@@ -124,9 +124,9 @@ bot.on("message:text", async (ctx) => {
   const lowerText = text.toLowerCase();
 
   if (lowerText.includes("draw")) {
-    const imageUrl = await generateImage(text);
+    const imageUrl = await generateImage(message);
     if (imageUrl) {
-      ctx.reply(imageUrl, {
+      ctx.replyWithPhoto(imageUrl, {
         reply_parameters: { message_id: ctx.msg.message_id },
       });
     }

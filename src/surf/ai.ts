@@ -27,7 +27,7 @@ If you are being asked to give a surf forecast then reply with a single keyword:
   },
 ];
 const summaryFilePath = "compiled/summary.txt";
-async function learnedSummary(): Promise<AIMessage> {
+export async function learnedSummary(): Promise<AIMessage> {
   const file = Bun.file(summaryFilePath);
   if (await file.exists()) {
     const text = await file.text();
