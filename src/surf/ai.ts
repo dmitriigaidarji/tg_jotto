@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { InputFile } from "grammy";
+import surfRedisClient from "./redis.ts";
 
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -26,6 +27,21 @@ If you are being asked to give a surf forecast then reply with a single keyword:
 `,
   },
 ];
+
+export const userSystemSettingsKey = "userSystemSettings";
+export async function userSystemSettings(): Promise<AIMessage[]> {
+  const value = await surfRedisClient.get(userSystemSettingsKey);
+  if (value) {
+    return [
+      {
+        role: "system",
+        content: value,
+      },
+    ];
+  }
+  return [];
+}
+
 const summaryFilePath = "compiled/summary.txt";
 export async function learnedSummary(): Promise<AIMessage> {
   const file = Bun.file(summaryFilePath);
@@ -70,6 +86,7 @@ export async function askAIRaw({ messages }: { messages: AIMessage[] }) {
   });
   return response.choices[0]?.message.content;
 }
+
 export async function askAI({
   messages,
   lastMessages,
@@ -78,6 +95,7 @@ export async function askAI({
   lastMessages: string[];
 }) {
   const allMessages = initialMessages
+    .concat(await userSystemSettings())
     .concat([await learnedSummary(), convertUserMessage(lastMessages)])
     .concat(messages);
   console.log({ allMessages });

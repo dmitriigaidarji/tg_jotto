@@ -9,6 +9,7 @@ import {
   askAIRaw,
   askRandomQuestion,
   askSummaryAndSaveToFile,
+  userSystemSettingsKey,
 } from "./ai.ts";
 import surfRedisClient from "./redis.ts";
 import { addHours, differenceInHours, subDays } from "date-fns";
@@ -37,7 +38,29 @@ await bot.api.setMyCommands([
     command: "wind",
     description: "Get wind info from Holfuy",
   },
+  {
+    command: "clear",
+    description: "Choose who to act as",
+  },
+  {
+    command: "current-settings",
+    description: "See current settings",
+  },
 ]);
+
+bot.command("current-settings", async (ctx) => {
+  const value = await surfRedisClient.get(userSystemSettingsKey);
+  if (value) {
+    return ctx.reply(value);
+  } else {
+    return ctx.reply("No settings");
+  }
+});
+
+bot.command("clear", (ctx) => {
+  surfRedisClient.del(userSystemSettingsKey);
+  return ctx.reply("Cleared my settings");
+});
 
 bot.command("start", (ctx) => {
   return ctx.reply("Hello. I am a tide and wind bot for Siargao surf");
@@ -122,8 +145,13 @@ bot.on("message:text", async (ctx) => {
 
   let assistantMessage: string | undefined;
   const lowerText = text.toLowerCase();
-
-  if (lowerText.startsWith("draw.")) {
+  if (lowerText.startsWith("system.")) {
+    const trimmed = text.substring(7).trim();
+    await surfRedisClient.set(userSystemSettingsKey, trimmed);
+    return ctx.reply("Added to system prompt", {
+      reply_parameters: { message_id: ctx.msg.message_id },
+    });
+  } else if (lowerText.startsWith("draw.")) {
     const trimmed = text.substring(5).trim();
     const prompt = await askAI({
       lastMessages,
