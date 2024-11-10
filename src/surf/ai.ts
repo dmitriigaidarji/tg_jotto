@@ -61,7 +61,7 @@ function convertUserMessage(messages: string[]): AIMessage {
 }
 export async function askAIRaw({ messages }: { messages: AIMessage[] }) {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     messages,
     max_completion_tokens: 2048,
     response_format: {
@@ -82,7 +82,7 @@ export async function askAI({
     .concat(messages);
   console.log({ allMessages });
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     messages: allMessages,
     max_completion_tokens: 2048,
     frequency_penalty: 1,
@@ -95,7 +95,7 @@ export async function askAI({
 
 async function askSummary({ lastMessages }: { lastMessages: string[] }) {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     messages: initialMessages
       .concat([await learnedSummary(), convertUserMessage(lastMessages)])
       .concat([
@@ -131,7 +131,7 @@ export async function askRandomQuestion({
   lastMessages: string[];
 }) {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     messages: initialMessages
       .concat([await learnedSummary(), convertUserMessage(lastMessages)])
       .concat([
@@ -142,7 +142,6 @@ export async function askRandomQuestion({
         },
       ]),
     max_completion_tokens: 2048,
-    frequency_penalty: 1,
     response_format: {
       type: "text",
     },
