@@ -109,7 +109,7 @@ bot.command("wind", (ctx) => {
 
 const doSummaryEveryNLines = 100;
 let summaryLineCounter = 0;
-let lastMessageDate = new Date();
+let lastMessageDate = subDays(new Date(), 1);
 let isBotMessageLast = false;
 const lastMessagesKey = "last_messages";
 const lastForecastKey = "forecast";
@@ -276,6 +276,7 @@ setInterval(randomAIMessages, 1000 * 60 * 60);
 
 bot.start().catch((e) => {
   Sentry.captureException(e);
+  throw e;
 });
 
 randomAIMessages();
