@@ -35,7 +35,7 @@ export async function userSystemSettings(): Promise<AIMessage[]> {
     return [
       {
         role: "system",
-        content: value,
+        content: "Important: " + value,
       },
     ];
   }
@@ -94,7 +94,9 @@ export async function askAI({
   messages: AIMessage[];
   lastMessages: string[];
 }) {
-  const allMessages = initialMessages
+  const userSystemM = await userSystemSettings();
+  const initM = userSystemM.length > 0 ? userSystemM : initialMessages;
+  const allMessages = initM
     .concat(await userSystemSettings())
     .concat([await learnedSummary(), convertUserMessage(lastMessages)])
     .concat(messages);
