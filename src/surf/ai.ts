@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { InputFile } from "grammy";
 
-const openai = new OpenAI({
+export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 

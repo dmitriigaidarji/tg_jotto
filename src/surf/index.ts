@@ -11,8 +11,9 @@ import {
   askSummaryAndSaveToFile,
 } from "./ai.ts";
 import surfRedisClient from "./redis.ts";
-import { differenceInHours, subDays } from "date-fns";
+import { addHours, differenceInHours, subDays } from "date-fns";
 import { getSurfLineForecast } from "./surfline.ts";
+import { generateImage } from "./draw.ts";
 
 Sentry.init({
   dsn: process.env.SURF_SENTRY,
@@ -85,7 +86,7 @@ bot.command("wind", (ctx) => {
 
 const doSummaryEveryNLines = 100;
 let summaryLineCounter = 0;
-let lastMessageDate = subDays(new Date(), 1);
+let lastMessageDate = new Date();
 let isBotMessageLast = false;
 const lastMessagesKey = "last_messages";
 const lastForecastKey = "forecast";
@@ -122,7 +123,14 @@ bot.on("message:text", async (ctx) => {
   let assistantMessage: string | undefined;
   const lowerText = text.toLowerCase();
 
-  if (["bot"].some((t) => lowerText.includes(t))) {
+  if (lowerText.includes("draw")) {
+    const imageUrl = await generateImage(text);
+    if (imageUrl) {
+      ctx.reply(imageUrl, {
+        reply_parameters: { message_id: ctx.msg.message_id },
+      });
+    }
+  } else if (lowerText.includes("bot")) {
     const response = await askAI({
       messages: [
         {
