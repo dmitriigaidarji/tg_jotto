@@ -123,13 +123,38 @@ bot.on("message:text", async (ctx) => {
   let assistantMessage: string | undefined;
   const lowerText = text.toLowerCase();
 
-  if (lowerText.includes("draw")) {
-    const imageUrl = await generateImage(message);
+  if (lowerText.startsWith("draw.")) {
+    const trimmed = text.substring(5).trim();
+    const prompt = await askAI({
+      lastMessages,
+      messages: [
+        {
+          role: "system",
+          content:
+            "Only reply with the prompt itself. Create a prompt for Dalle for this query: " +
+            trimmed,
+        },
+      ],
+    });
+    console.log("PROMPT: " + prompt);
+    if (prompt) {
+      const imageUrl = await generateImage(prompt);
+      if (imageUrl) {
+        return ctx.replyWithPhoto(imageUrl, {
+          reply_parameters: { message_id: ctx.msg.message_id },
+        });
+      }
+    }
+    return;
+  } else if (lowerText.startsWith("picture.")) {
+    const trimmed = text.substring(8).trim();
+    const imageUrl = await generateImage(trimmed);
     if (imageUrl) {
-      ctx.replyWithPhoto(imageUrl, {
+      return ctx.replyWithPhoto(imageUrl, {
         reply_parameters: { message_id: ctx.msg.message_id },
       });
     }
+    return;
   } else if (lowerText.includes("bot")) {
     const response = await askAI({
       messages: [
