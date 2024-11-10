@@ -43,12 +43,12 @@ await bot.api.setMyCommands([
     description: "Choose who to act as",
   },
   {
-    command: "current-settings",
+    command: "currentsettings",
     description: "See current settings",
   },
 ]);
 
-bot.command("current-settings", async (ctx) => {
+bot.command("currentsettings", async (ctx) => {
   const value = await surfRedisClient.get(userSystemSettingsKey);
   if (value) {
     return ctx.reply(value);
