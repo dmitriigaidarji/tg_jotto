@@ -259,7 +259,7 @@ bot.on("message:text", async (ctx) => {
 });
 
 async function randomAIMessages() {
-  if (!isBotMessageLast && differenceInHours(new Date(), lastMessageDate) > 1) {
+  if (differenceInHours(new Date(), lastMessageDate) > 3) {
     lastMessageDate = new Date();
     isBotMessageLast = true;
     const lastMessages = await getLatestMessages();
