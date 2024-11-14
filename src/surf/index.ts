@@ -276,7 +276,13 @@ setInterval(randomAIMessages, 1000 * 60 * 60);
 
 bot.start().catch((e) => {
   Sentry.captureException(e);
+  process.exit(1);
   throw e;
 });
+bot.catch = function (e) {
+  Sentry.captureException(e);
+  process.exit(1);
+  throw e;
+};
 
 randomAIMessages();
