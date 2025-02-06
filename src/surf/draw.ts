@@ -9,6 +9,5 @@ export async function generateImage(
     n: 1,
     size: "1024x1024",
   });
-  const image_url = response.data[0].url;
-  return image_url;
+  return response.data[0].url;
 }

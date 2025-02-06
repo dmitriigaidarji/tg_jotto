@@ -12,7 +12,7 @@ import {
   userSystemSettingsKey,
 } from "./ai.ts";
 import surfRedisClient from "./redis.ts";
-import { addHours, differenceInHours, subDays } from "date-fns";
+import { differenceInHours, subDays } from "date-fns";
 import { getSurfLineForecast } from "./surfline.ts";
 import { generateImage } from "./draw.ts";
 
@@ -110,11 +110,10 @@ bot.command("wind", (ctx) => {
 const doSummaryEveryNLines = 100;
 let summaryLineCounter = 0;
 let lastMessageDate = subDays(new Date(), 1);
-let isBotMessageLast = false;
 const lastMessagesKey = "last_messages";
 const lastForecastKey = "forecast";
 
-const chatId = -4198414171;
+const chatId = -1002476269927;
 
 async function getLatestMessages(): Promise<string[]> {
   const cached = await surfRedisClient.get(lastMessagesKey);
@@ -196,7 +195,6 @@ bot.on("message:text", async (ctx) => {
     console.log("ai response", response);
     if (response) {
       lastMessageDate = new Date();
-      isBotMessageLast = true;
       // asking forecast
       if (
         response.length < 10 &&
@@ -235,11 +233,7 @@ bot.on("message:text", async (ctx) => {
         //   reply_parameters: { message_id: ctx.msg.message_id },
         // });
       }
-    } else {
-      isBotMessageLast = false;
     }
-  } else {
-    isBotMessageLast = false;
   }
 
   // max N messages
@@ -261,7 +255,6 @@ bot.on("message:text", async (ctx) => {
 async function randomAIMessages() {
   if (differenceInHours(new Date(), lastMessageDate) > 3) {
     lastMessageDate = new Date();
-    isBotMessageLast = true;
     const lastMessages = await getLatestMessages();
     const q = await askRandomQuestion({ lastMessages });
     if (q) {
