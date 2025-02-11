@@ -112,13 +112,11 @@ bot.on("message:text", async (ctx) => {
   }
   const message = `${first_name}: ${text}`;
   const { message_id } = ctx.msg;
-  const chatId = (await ctx.getChat()).id;
 
   return handleMessageText({
     text,
     message,
     message_id,
-    chatId,
     ctx,
   });
 });
@@ -144,4 +142,4 @@ function handleRandomAIMessages() {
   });
 }
 
-setInterval(handleRandomAIMessages, 1000 * 60 * 60);
+// setInterval(handleRandomAIMessages, 1000 * 60 * 60);

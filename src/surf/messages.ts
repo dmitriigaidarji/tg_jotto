@@ -29,31 +29,25 @@ export async function getLatestMessages(): Promise<string[]> {
 
 let lastMessageDate = subDays(new Date(), 1);
 
-export async function handleMessageText({
+export async function processMessage({
   text,
-  message,
-  chatId,
-  ctx,
-  message_id,
+  textWithAuthor,
 }: {
   text: string;
-  message: string;
-  chatId: number;
-  ctx: Context;
-  message_id: number;
-}) {
-  console.log("chat id", chatId, "; message", message);
-
+  textWithAuthor: string;
+}): Promise<{
+  type: "text" | "image";
+  value: string;
+} | void> {
   const lastMessages = await getLatestMessages();
-
-  let assistantMessage: string | undefined;
   const lowerText = text.toLowerCase();
   if (lowerText.startsWith("system.")) {
     const trimmed = text.substring(7).trim();
     await surfRedisClient.set(userSystemSettingsKey, trimmed);
-    return ctx.reply("Added to system prompt", {
-      reply_parameters: { message_id },
-    });
+    return {
+      type: "text",
+      value: "Added to system prompt",
+    };
   } else if (lowerText.startsWith("draw.")) {
     const trimmed = text.substring(5).trim();
     const prompt = await askAI({
@@ -67,13 +61,13 @@ export async function handleMessageText({
         },
       ],
     });
-    console.log("PROMPT: " + prompt);
     if (prompt) {
       const imageUrl = await generateImage(prompt);
       if (imageUrl) {
-        return ctx.replyWithPhoto(imageUrl, {
-          reply_parameters: { message_id },
-        });
+        return {
+          type: "image",
+          value: imageUrl,
+        };
       }
     }
     return;
@@ -81,9 +75,10 @@ export async function handleMessageText({
     const trimmed = text.substring(8).trim();
     const imageUrl = await generateImage(trimmed);
     if (imageUrl) {
-      return ctx.replyWithPhoto(imageUrl, {
-        reply_parameters: { message_id },
-      });
+      return {
+        type: "image",
+        value: imageUrl,
+      };
     }
     return;
   } else if (lowerText.includes("bot")) {
@@ -91,12 +86,11 @@ export async function handleMessageText({
       messages: [
         {
           role: "user",
-          content: message,
+          content: textWithAuthor,
         },
       ],
       lastMessages,
     });
-    console.log("ai response", response);
     if (response) {
       lastMessageDate = new Date();
       // asking forecast
@@ -122,16 +116,17 @@ export async function handleMessageText({
             ],
           });
           if (forecastResponse) {
-            ctx.reply(forecastResponse, {
-              reply_parameters: { message_id },
-            });
+            return {
+              type: "text",
+              value: forecastResponse,
+            };
           }
         }
       } else {
-        assistantMessage = `Assistant: ${response}`;
-        ctx.reply(response, {
-          reply_parameters: { message_id },
-        });
+        return {
+          type: "text",
+          value: response,
+        };
         // const audio = await textToSpeech(response);
         // ctx.replyWithAudio(audio, {
         //   reply_parameters: { message_id: ctx.msg.message_id },
@@ -139,9 +134,19 @@ export async function handleMessageText({
       }
     }
   }
+}
+
+async function saveMessages({
+  textWithAuthor,
+  assistantMessage,
+}: {
+  textWithAuthor: string;
+  assistantMessage?: string;
+}) {
+  const lastMessages = await getLatestMessages();
 
   // max N messages
-  lastMessages.push(message);
+  lastMessages.push(textWithAuthor);
   if (assistantMessage) {
     lastMessages.push(assistantMessage);
   }
@@ -155,6 +160,41 @@ export async function handleMessageText({
   }
   await surfRedisClient.set(lastMessagesKey, JSON.stringify(lastMessages));
 }
+export async function handleMessageText({
+  text,
+  textWithAuthor,
+  ctx,
+  message_id,
+}: {
+  text: string;
+  textWithAuthor: string;
+  ctx: Context;
+  message_id: number;
+}) {
+  const result = await processMessage({
+    text,
+    textWithAuthor,
+  });
+
+  if (result) {
+    saveMessages({
+      textWithAuthor,
+      assistantMessage: `Assistant: ${result.value}`,
+    });
+    switch (result.type) {
+      case "image":
+        return ctx.replyWithPhoto(result.value, {
+          reply_parameters: { message_id },
+        });
+      case "text":
+      default:
+        return ctx.reply(result.value, {
+          reply_parameters: { message_id },
+        });
+    }
+  }
+}
+
 export async function generateRandomAIMessages() {
   if (differenceInHours(new Date(), lastMessageDate) > 3) {
     lastMessageDate = new Date();
