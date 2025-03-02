@@ -12,6 +12,7 @@
     "@types/bun": "latest",
     "@types/jsdom": "^21.1.7",
     "@types/lodash-es": "^4.17.12",
+    "pm2": "^5.4.3",
     "prettier": "^3.3.3"
   },
   "peerDependencies": {

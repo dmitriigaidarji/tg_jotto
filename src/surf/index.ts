@@ -4,17 +4,9 @@ import { hydrateReply, type ParseModeFlavor } from "@grammyjs/parse-mode";
 import { fetchWindSpeedAsKnots } from "./wind.ts";
 import fetchTideFromSurfLineAPI, { filterTides, formatDate } from "./tide.ts";
 import * as Sentry from "@sentry/bun";
-import {
-  askAI,
-  askAIRaw,
-  askRandomQuestion,
-  askSummaryAndSaveToFile,
-  userSystemSettingsKey,
-} from "./ai.ts";
+import { userSystemSettingsKey } from "./ai.ts";
 import surfRedisClient from "./redis.ts";
-import { differenceInHours, subDays } from "date-fns";
-import { getSurfLineForecast } from "./surfline.ts";
-import { generateImage } from "./draw.ts";
+import { generateRandomAIMessages, handleMessageText } from "./messages.ts";
 
 Sentry.init({
   dsn: process.env.SURF_SENTRY,
@@ -107,26 +99,6 @@ bot.command("wind", (ctx) => {
   return calcWindInfo(ctx);
 });
 
-const doSummaryEveryNLines = 100;
-let summaryLineCounter = 0;
-let lastMessageDate = subDays(new Date(), 1);
-let isBotMessageLast = false;
-const lastMessagesKey = "last_messages";
-const lastForecastKey = "forecast";
-
-const chatId = -4198414171;
-
-async function getLatestMessages(): Promise<string[]> {
-  const cached = await surfRedisClient.get(lastMessagesKey);
-  let lastMessages: string[] = [];
-  if (cached) {
-    try {
-      lastMessages = JSON.parse(cached);
-    } catch (err) {}
-  }
-  return lastMessages;
-}
-
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text.trim();
   let first_name = ctx.from.first_name;
@@ -139,140 +111,15 @@ bot.on("message:text", async (ctx) => {
       break;
   }
   const message = `${first_name}: ${text}`;
-  console.log("chat id", (await ctx.getChat()).id, "; message", message);
+  const { message_id } = ctx.msg;
 
-  const lastMessages = await getLatestMessages();
-
-  let assistantMessage: string | undefined;
-  const lowerText = text.toLowerCase();
-  if (lowerText.startsWith("system.")) {
-    const trimmed = text.substring(7).trim();
-    await surfRedisClient.set(userSystemSettingsKey, trimmed);
-    return ctx.reply("Added to system prompt", {
-      reply_parameters: { message_id: ctx.msg.message_id },
-    });
-  } else if (lowerText.startsWith("draw.")) {
-    const trimmed = text.substring(5).trim();
-    const prompt = await askAI({
-      lastMessages,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Only reply with the prompt itself. Create a prompt for Dalle for this query: " +
-            trimmed,
-        },
-      ],
-    });
-    console.log("PROMPT: " + prompt);
-    if (prompt) {
-      const imageUrl = await generateImage(prompt);
-      if (imageUrl) {
-        return ctx.replyWithPhoto(imageUrl, {
-          reply_parameters: { message_id: ctx.msg.message_id },
-        });
-      }
-    }
-    return;
-  } else if (lowerText.startsWith("picture.")) {
-    const trimmed = text.substring(8).trim();
-    const imageUrl = await generateImage(trimmed);
-    if (imageUrl) {
-      return ctx.replyWithPhoto(imageUrl, {
-        reply_parameters: { message_id: ctx.msg.message_id },
-      });
-    }
-    return;
-  } else if (lowerText.includes("bot")) {
-    const response = await askAI({
-      messages: [
-        {
-          role: "user",
-          content: message,
-        },
-      ],
-      lastMessages,
-    });
-    console.log("ai response", response);
-    if (response) {
-      lastMessageDate = new Date();
-      isBotMessageLast = true;
-      // asking forecast
-      if (
-        response.length < 10 &&
-        response.toUpperCase().startsWith("FORECAST")
-      ) {
-        let forecast = await surfRedisClient.get(lastForecastKey);
-        if (!forecast) {
-          forecast = (await getSurfLineForecast()) ?? null;
-          if (forecast) {
-            await surfRedisClient.set(lastForecastKey, forecast);
-            await surfRedisClient.expire(lastForecastKey, 60 * 60 * 12); // 12h
-          }
-        }
-        if (forecast) {
-          const forecastResponse = await askAIRaw({
-            messages: [
-              {
-                role: "system",
-                content: `Do a surf forecast based on the data below. Include rating from the data. Additional request details from the user: "${text}". Data:\n${forecast}`,
-              },
-            ],
-          });
-          if (forecastResponse) {
-            ctx.reply(forecastResponse, {
-              reply_parameters: { message_id: ctx.msg.message_id },
-            });
-          }
-        }
-      } else {
-        assistantMessage = `Assistant: ${response}`;
-        ctx.reply(response, {
-          reply_parameters: { message_id: ctx.msg.message_id },
-        });
-        // const audio = await textToSpeech(response);
-        // ctx.replyWithAudio(audio, {
-        //   reply_parameters: { message_id: ctx.msg.message_id },
-        // });
-      }
-    } else {
-      isBotMessageLast = false;
-    }
-  } else {
-    isBotMessageLast = false;
-  }
-
-  // max N messages
-  lastMessages.push(message);
-  if (assistantMessage) {
-    lastMessages.push(assistantMessage);
-  }
-  while (lastMessages.length > doSummaryEveryNLines) {
-    lastMessages.shift();
-  }
-
-  if (++summaryLineCounter >= doSummaryEveryNLines) {
-    summaryLineCounter = 0;
-    askSummaryAndSaveToFile({ lastMessages });
-  }
-  await surfRedisClient.set(lastMessagesKey, JSON.stringify(lastMessages));
+  return handleMessageText({
+    text,
+    message,
+    message_id,
+    ctx,
+  });
 });
-
-async function randomAIMessages() {
-  if (differenceInHours(new Date(), lastMessageDate) > 3) {
-    lastMessageDate = new Date();
-    isBotMessageLast = true;
-    const lastMessages = await getLatestMessages();
-    const q = await askRandomQuestion({ lastMessages });
-    if (q) {
-      lastMessages.push(`Assistant: ${q}`);
-      // const audio = await textToSpeech(q);
-      // bot.api.sendAudio(chatId, audio);
-      return bot.api.sendMessage(chatId, q);
-    }
-  }
-}
-setInterval(randomAIMessages, 1000 * 60 * 60);
 
 bot.start().catch((e) => {
   Sentry.captureException(e);
@@ -285,4 +132,14 @@ bot.catch = function (e) {
   throw e;
 };
 
-randomAIMessages();
+function handleRandomAIMessages() {
+  const chatId = -1002476269927;
+
+  return generateRandomAIMessages().then((message) => {
+    if (message) {
+      return bot.api.sendMessage(chatId, message);
+    }
+  });
+}
+
+// setInterval(handleRandomAIMessages, 1000 * 60 * 60);
