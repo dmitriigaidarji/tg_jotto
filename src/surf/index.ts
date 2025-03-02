@@ -12,7 +12,7 @@ import {
   userSystemSettingsKey,
 } from "./ai.ts";
 import surfRedisClient from "./redis.ts";
-import { addHours, differenceInHours, subDays } from "date-fns";
+import { differenceInHours, subDays } from "date-fns";
 import { getSurfLineForecast } from "./surfline.ts";
 import { generateImage } from "./draw.ts";
 
