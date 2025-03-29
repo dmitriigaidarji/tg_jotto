@@ -117,7 +117,7 @@ async function askSummary({ lastMessages }: { lastMessages: string[] }) {
       type: "text",
     },
   });
-  return response.choices[0]?.message.content;
+  return response.choices[0]?.message.content?.substring(0, 4090);
 }
 
 export async function askSummaryAndSaveToFile({
