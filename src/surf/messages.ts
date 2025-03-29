@@ -175,7 +175,7 @@ export async function handleMessageText({
     text,
     textWithAuthor,
   });
-
+  console.log(result, textWithAuthor, message_id);
   if (result) {
     saveMessages({
       textWithAuthor,

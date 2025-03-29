@@ -115,19 +115,21 @@ bot.on("message:text", async (ctx) => {
 
   return handleMessageText({
     text,
-    message,
+    textWithAuthor: message,
     message_id,
     ctx,
   });
 });
-
+console.log("starting..");
 bot.start().catch((e) => {
   Sentry.captureException(e);
+  console.log(e);
   process.exit(1);
   throw e;
 });
 bot.catch = function (e) {
   Sentry.captureException(e);
+  console.log(e);
   process.exit(1);
   throw e;
 };

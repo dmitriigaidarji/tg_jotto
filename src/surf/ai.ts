@@ -8,9 +8,10 @@ import {
 } from "./constants.ts";
 
 export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
 });
-
+const model = "thedrummer/skyfall-36b-v2"; // "cognitivecomputations/dolphin3.0-r1-mistral-24b:free"; //"mistralai/mistral-small-24b-instruct-2501:free"; // "thedrummer/skyfall-36b-v2";
 const initialChatMessages: AIMessage[] = [
   {
     role: "system",
@@ -49,21 +50,23 @@ export async function learnedSummary(): Promise<AIMessage> {
   }
 }
 function convertUserMessage(messages: string[]): AIMessage {
+  if (messages.length === 0) {
+    return {
+      role: "system",
+      content: ``,
+    };
+  }
   return {
     role: "system",
     content:
       `This is the latest conversation history,
       rely on it while making your replies. 
-      Try not to repeat yourself.
-      The messages start with author of the message who is one of the three guys mentioned above 
-      and follows with the message text.
-      Some of those messages are your own, those start with 'Assistant' keyword, but don't start your replies with that keyword or with any other keyword.
       Here is the list of all the recent messages: ` + messages.join("\n"),
   };
 }
 export async function askAIRaw({ messages }: { messages: AIMessage[] }) {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model,
     messages,
     max_completion_tokens: 2048,
     response_format: {
@@ -84,14 +87,11 @@ export async function askAI({
   const initM = userSystemM.length > 0 ? userSystemM : initialChatMessages;
   const allMessages = initM
     .concat(await userSystemSettings())
-    .concat([await learnedSummary(), convertUserMessage(lastMessages)])
+    .concat([convertUserMessage(lastMessages)])
     .concat(messages);
-  console.log({ allMessages });
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model,
     messages: allMessages,
-    max_completion_tokens: 2048,
-    frequency_penalty: 1,
     response_format: {
       type: "text",
     },
@@ -101,7 +101,7 @@ export async function askAI({
 
 async function askSummary({ lastMessages }: { lastMessages: string[] }) {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model,
     messages: initialChatMessages
       .concat([await learnedSummary(), convertUserMessage(lastMessages)])
       .concat([
@@ -137,7 +137,7 @@ export async function askRandomQuestion({
   lastMessages: string[];
 }) {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model,
     messages: initialChatMessages
       .concat([await learnedSummary(), convertUserMessage(lastMessages)])
       .concat([
