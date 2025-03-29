@@ -89,6 +89,7 @@ export async function askAI({
     .concat(await userSystemSettings())
     .concat([convertUserMessage(lastMessages)])
     .concat(messages);
+  console.log(allMessages);
   const response = await openai.chat.completions.create({
     model,
     messages: allMessages,
