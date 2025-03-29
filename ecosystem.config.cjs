@@ -30,6 +30,7 @@ module.exports = {
         SURF_API_KEY: process.env.SURF_API_KEY,
         SURF_SENTRY: process.env.SURF_SENTRY,
         OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+        OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
         PORT: process.env.PORT,
       },
     },
