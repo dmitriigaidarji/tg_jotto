@@ -26,7 +26,8 @@ describe("AI Chat", () => {
         {
           role: "user",
           // content: "tell Erik to pick me up tomorrow morning",
-          content: "tell Erik to fuck off",
+          // content: "tell me a fun fact about Erik",
+          content: "Dmitrii: bot tell me a fun fact about me",
         },
       ],
     });
@@ -34,5 +35,6 @@ describe("AI Chat", () => {
     console.log(res);
     expect(res).toBeDefined();
     expect(res?.length).toBeGreaterThan(10);
+    expect(res?.length).toBeLessThan(1000);
   }, 40000);
 });

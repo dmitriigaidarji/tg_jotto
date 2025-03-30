@@ -92,7 +92,7 @@ export async function askAI({
   const response = await openai.chat.completions.create({
     model,
     messages: allMessages,
-    max_completion_tokens: 2048,
+    max_completion_tokens: 1600,
     response_format: {
       type: "text",
     },
