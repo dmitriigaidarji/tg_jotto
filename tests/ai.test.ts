@@ -26,8 +26,9 @@ describe("AI Chat", () => {
         {
           role: "user",
           // content: "tell Erik to pick me up tomorrow morning",
-          // content: "tell me a fun fact about Erik",
-          content: "Dmitrii: bot tell me a fun fact about me",
+          // content: "Dmitrii: tell me a fun fact about Erik",
+          // content: "Dmitrii: bot tell me a fun fact about me",
+          content: "Dmitrii: bot remind erik that we are surfing soon",
         },
       ],
     });
