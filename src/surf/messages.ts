@@ -11,13 +11,16 @@ import { generateImage } from "./draw.ts";
 import { getSurfLineForecast } from "./surfline.ts";
 import { differenceInHours, subDays } from "date-fns";
 
-const lastMessagesKey = "last_messages";
-const doSummaryEveryNLines = 100;
+// const lastMessagesKey = "last_messages";
+function getLastMessagesKey(chatId: number) {
+  return `last:messages:${chatId}:`;
+}
+const doSummaryEveryNLines = 20;
 let summaryLineCounter = 0;
 const lastForecastKey = "forecast";
 
-export async function getLatestMessages(): Promise<string[]> {
-  const cached = await surfRedisClient.get(lastMessagesKey);
+export async function getLatestMessages(chatId: number): Promise<string[]> {
+  const cached = await surfRedisClient.get(getLastMessagesKey(chatId));
   let lastMessages: string[] = [];
   if (cached) {
     try {
@@ -32,14 +35,16 @@ let lastMessageDate = subDays(new Date(), 1);
 export async function processMessage({
   text,
   textWithAuthor,
+  chatId,
 }: {
   text: string;
   textWithAuthor: string;
+  chatId: number;
 }): Promise<{
   type: "text" | "image";
   value: string;
 } | void> {
-  const lastMessages = await getLatestMessages();
+  const lastMessages = await getLatestMessages(chatId);
   const lowerText = text.toLowerCase();
   if (lowerText.startsWith("system.")) {
     const trimmed = text.substring(7).trim();
@@ -139,11 +144,13 @@ export async function processMessage({
 async function saveMessages({
   textWithAuthor,
   assistantMessage,
+  chatId,
 }: {
   textWithAuthor: string;
   assistantMessage?: string;
+  chatId: number;
 }) {
-  const lastMessages = await getLatestMessages();
+  const lastMessages = await getLatestMessages(chatId);
 
   // max N messages
   lastMessages.push(textWithAuthor);
@@ -156,29 +163,37 @@ async function saveMessages({
 
   if (++summaryLineCounter >= doSummaryEveryNLines) {
     summaryLineCounter = 0;
-    askSummaryAndSaveToFile({ lastMessages });
+    askSummaryAndSaveToFile({ lastMessages, chatId });
   }
-  await surfRedisClient.set(lastMessagesKey, JSON.stringify(lastMessages));
+  await surfRedisClient.set(
+    getLastMessagesKey(chatId),
+    JSON.stringify(lastMessages),
+  );
+  await surfRedisClient.expire(getLastMessagesKey(chatId), 60 * 60 * 24 * 3); // 3days
 }
 export async function handleMessageText({
   text,
   textWithAuthor,
   ctx,
   message_id,
+  chatId,
 }: {
   text: string;
   textWithAuthor: string;
   ctx: Context;
   message_id: number;
+  chatId: number;
 }) {
   const result = await processMessage({
     text,
     textWithAuthor,
+    chatId,
   });
   console.log(result, textWithAuthor, message_id);
   if (result) {
     saveMessages({
       textWithAuthor,
+      chatId,
       assistantMessage: `Assistant: ${result.value}`,
     });
     switch (result.type) {
@@ -195,14 +210,17 @@ export async function handleMessageText({
   }
 }
 
-export async function generateRandomAIMessages() {
+export async function generateRandomAIMessages(chatId: number) {
   if (differenceInHours(new Date(), lastMessageDate) > 3) {
     lastMessageDate = new Date();
-    const lastMessages = await getLatestMessages();
-    const q = await askRandomQuestion({ lastMessages });
+    const lastMessages = await getLatestMessages(chatId);
+    const q = await askRandomQuestion({ lastMessages, chatId });
     if (q) {
       lastMessages.push(`Assistant: ${q}`);
-      await surfRedisClient.set(lastMessagesKey, JSON.stringify(lastMessages));
+      await surfRedisClient.set(
+        getLastMessagesKey(chatId),
+        JSON.stringify(lastMessages),
+      );
       // const audio = await textToSpeech(q);
       // bot.api.sendAudio(chatId, audio);
       return q;

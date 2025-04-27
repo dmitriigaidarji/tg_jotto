@@ -1,17 +1,14 @@
 import OpenAI from "openai";
 import { InputFile } from "grammy";
 import surfRedisClient from "./redis.ts";
-import {
-  additionalSummary,
-  type AIMessage,
-  initialSystemPrompt,
-} from "./constants.ts";
+import { type AIMessage, initialSystemPrompt } from "./constants.ts";
 
 export const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: "https://openrouter.ai/api/v1",
 });
-const model = "thedrummer/skyfall-36b-v2"; // "cognitivecomputations/dolphin3.0-r1-mistral-24b:free"; //"mistralai/mistral-small-24b-instruct-2501:free"; // "thedrummer/skyfall-36b-v2";
+
+const model = "thedrummer/anubis-pro-105b-v1"; //"thedrummer/skyfall-36b-v2"; // "cognitivecomputations/dolphin3.0-r1-mistral-24b:free"; //"mistralai/mistral-small-24b-instruct-2501:free"; // "thedrummer/skyfall-36b-v2";
 const initialChatMessages: AIMessage[] = [
   {
     role: "system",
@@ -33,9 +30,11 @@ export async function userSystemSettings(): Promise<AIMessage[]> {
   return [];
 }
 
-const summaryFilePath = "compiled/summary.txt";
-export async function learnedSummary(): Promise<AIMessage> {
-  const file = Bun.file(summaryFilePath);
+function getSummaryFilePath(chatId: number) {
+  return `compiled/summary-${chatId}.txt`;
+}
+export async function learnedSummary(chatId: number): Promise<AIMessage> {
+  const file = Bun.file(getSummaryFilePath(chatId));
   if (await file.exists()) {
     const text = await file.text();
     return {
@@ -45,7 +44,7 @@ export async function learnedSummary(): Promise<AIMessage> {
   } else {
     return {
       role: "system",
-      content: additionalSummary,
+      content: "",
     };
   }
 }
@@ -100,11 +99,17 @@ export async function askAI({
   return response.choices[0]?.message.content;
 }
 
-async function askSummary({ lastMessages }: { lastMessages: string[] }) {
+async function askSummary({
+  lastMessages,
+  chatId,
+}: {
+  lastMessages: string[];
+  chatId: number;
+}) {
   const response = await openai.chat.completions.create({
     model,
     messages: initialChatMessages
-      .concat([await learnedSummary(), convertUserMessage(lastMessages)])
+      .concat([await learnedSummary(chatId), convertUserMessage(lastMessages)])
       .concat([
         {
           role: "system",
@@ -123,29 +128,33 @@ async function askSummary({ lastMessages }: { lastMessages: string[] }) {
 
 export async function askSummaryAndSaveToFile({
   lastMessages,
+  chatId,
 }: {
   lastMessages: string[];
+  chatId: number;
 }) {
-  const summary = await askSummary({ lastMessages });
+  const summary = await askSummary({ lastMessages, chatId });
   if (summary) {
-    return Bun.write(summaryFilePath, summary);
+    return Bun.write(getSummaryFilePath(chatId), summary);
   }
 }
 
 export async function askRandomQuestion({
   lastMessages,
+  chatId,
 }: {
   lastMessages: string[];
+  chatId: number;
 }) {
   const response = await openai.chat.completions.create({
     model,
     messages: initialChatMessages
-      .concat([await learnedSummary(), convertUserMessage(lastMessages)])
+      .concat([await learnedSummary(chatId), convertUserMessage(lastMessages)])
       .concat([
         {
           role: "system",
           content:
-            "Ask either Vlad or Erik a random question. Try to be provocative to trigger an immediate response",
+            "Ask any member of the chat a random question. Try to be provocative to trigger an immediate response",
         },
       ]),
     max_completion_tokens: 2048,

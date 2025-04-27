@@ -98,8 +98,9 @@ bot.command("tide", (ctx) => {
 bot.command("wind", (ctx) => {
   return calcWindInfo(ctx);
 });
-
+const activeChatIds = new Set<number>();
 bot.on("message:text", async (ctx) => {
+  activeChatIds.add(ctx.chat.id);
   const text = ctx.message.text.trim();
   let first_name = ctx.from.first_name;
   switch (first_name.toUpperCase()) {
@@ -118,6 +119,7 @@ bot.on("message:text", async (ctx) => {
     textWithAuthor: message,
     message_id,
     ctx,
+    chatId: ctx.chat.id,
   });
 });
 console.log("starting..");
@@ -135,13 +137,14 @@ bot.catch = function (e) {
 };
 
 function handleRandomAIMessages() {
-  const chatId = -1002476269927;
-
-  return generateRandomAIMessages().then((message) => {
-    if (message) {
-      return bot.api.sendMessage(chatId, message);
-    }
-  });
+  console.log(activeChatIds);
+  return Array.from(activeChatIds).map((chatId) =>
+    generateRandomAIMessages(chatId).then((message) => {
+      if (message) {
+        return bot.api.sendMessage(chatId, message);
+      }
+    }),
+  );
 }
 
-// setInterval(handleRandomAIMessages, 1000 * 60 * 60);
+setInterval(handleRandomAIMessages, 1000 * 60 * 60);
