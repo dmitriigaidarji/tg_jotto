@@ -8,7 +8,7 @@ export const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
 });
 
-const model = "thedrummer/anubis-pro-105b-v1"; //"thedrummer/skyfall-36b-v2"; // "cognitivecomputations/dolphin3.0-r1-mistral-24b:free"; //"mistralai/mistral-small-24b-instruct-2501:free"; // "thedrummer/skyfall-36b-v2";
+const model = "thedrummer/skyfall-36b-v2"; // "cognitivecomputations/dolphin3.0-r1-mistral-24b:free"; //"mistralai/mistral-small-24b-instruct-2501:free"; // "thedrummer/skyfall-36b-v2";
 const initialChatMessages: AIMessage[] = [
   {
     role: "system",
