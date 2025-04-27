@@ -203,7 +203,7 @@ export async function handleMessageText({
         });
       case "text":
       default:
-        return ctx.reply(result.value, {
+        return ctx.reply(result.value.substring(0, 4000), {
           reply_parameters: { message_id },
         });
     }
