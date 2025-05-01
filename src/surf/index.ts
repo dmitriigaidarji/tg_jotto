@@ -147,4 +147,4 @@ function handleRandomAIMessages() {
   );
 }
 
-setInterval(handleRandomAIMessages, 1000 * 60 * 60);
+setInterval(handleRandomAIMessages, 1000 * 60 * 60 * 8);

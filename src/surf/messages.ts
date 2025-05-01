@@ -30,8 +30,6 @@ export async function getLatestMessages(chatId: number): Promise<string[]> {
   return lastMessages;
 }
 
-let lastMessageDate = subDays(new Date(), 1);
-
 export async function processMessage({
   text,
   textWithAuthor,
@@ -97,7 +95,6 @@ export async function processMessage({
       lastMessages,
     });
     if (response) {
-      lastMessageDate = new Date();
       // asking forecast
       if (
         response.length < 10 &&
@@ -211,19 +208,16 @@ export async function handleMessageText({
 }
 
 export async function generateRandomAIMessages(chatId: number) {
-  if (differenceInHours(new Date(), lastMessageDate) > 3) {
-    lastMessageDate = new Date();
-    const lastMessages = await getLatestMessages(chatId);
-    const q = await askRandomQuestion({ lastMessages, chatId });
-    if (q) {
-      lastMessages.push(`Assistant: ${q}`);
-      await surfRedisClient.set(
-        getLastMessagesKey(chatId),
-        JSON.stringify(lastMessages),
-      );
-      // const audio = await textToSpeech(q);
-      // bot.api.sendAudio(chatId, audio);
-      return q;
-    }
+  const lastMessages = await getLatestMessages(chatId);
+  const q = await askRandomQuestion({ lastMessages, chatId });
+  if (q) {
+    lastMessages.push(`Assistant: ${q}`);
+    await surfRedisClient.set(
+      getLastMessagesKey(chatId),
+      JSON.stringify(lastMessages),
+    );
+    // const audio = await textToSpeech(q);
+    // bot.api.sendAudio(chatId, audio);
+    return q;
   }
 }
